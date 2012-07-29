@@ -105,7 +105,7 @@ function escapeHTMLinJSON( key, value ) {
 }
 
 function publishRoute( req, res ){
-  var email = req.session.email,
+  var email = "test@trash-mail.com",
       id = req.params.id;
 
   if (!email) {
@@ -266,7 +266,7 @@ function publishRoute( req, res ){
 app.post('/api/publish/:id', publishRoute );
 
 app.get('/dashboard', function(req, res) {
-  var email = req.session.email;
+  var email = "test@trash-mail.com";
 
   if ( !email ) {
     res.render( 'dashboard-unauthorized.jade' );
@@ -305,7 +305,7 @@ app.get('/dashboard', function(req, res) {
 });
 
 app.get('/api/projects', function(req, res) {
-  var email = req.session.email;
+  var email = "test@trash-mail.com";
 
   if (!email) {
     res.json({ error: 'unauthorized' }, 403);
@@ -350,7 +350,7 @@ app.get('/api/projects', function(req, res) {
 });
 
 app.get('/api/project/:id?', function(req, res) {
-  var email = req.session.email,
+   var email = "test@trash-mail.com",
       id = req.params.id;
 
   if (!email) {
@@ -380,8 +380,8 @@ app.get('/api/project/:id?', function(req, res) {
 });
 
 app.get('/api/delete/:id?', function(req, res) {
-  var email = req.session.email,
-      id = req.params.id;
+  var email = "test@trash-mail.com",
+  id = req.params.id;
 
   if (!email) {
     res.json({ error: 'unauthorized' }, 403);
@@ -410,8 +410,8 @@ app.get('/api/delete/:id?', function(req, res) {
 
 
 app.post('/api/project/:id?', function( req, res ) {
-  var email = req.session.email,
-      id = req.params.id;
+  var email = "test@trash-mail.com",
+  id = req.params.id;
 
   if ( !email ) {
     res.json( { error: 'unauthorized' }, 403 );
@@ -478,8 +478,7 @@ app.post('/api/project/:id?', function( req, res ) {
 });
 
 app.get('/api/whoami', function( req, res ) {
-  var email = req.session.email;
-
+  var email = "test@trash-mail.com";
   if ( !email ) {
     res.json( { error: 'unauthorized' }, 403 );
     return;
