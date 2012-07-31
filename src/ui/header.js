@@ -1,8 +1,7 @@
-define( [ "dialog/dialog", "util/lang", "text!layouts/header.html" ],
+define( [ "dialog/dialog", "util/lang", "text!layouts/header.html"],
   function( Dialog, Lang, HEADER_TEMPLATE ){
 
-  var DEFAULT_AUTH_BUTTON_TEXT = "<span class='icon-user'></span> Sign In / Sign Up",
-      DEFAULT_AUTH_BUTTON_TITLE = "Sign in or sign up with Persona";
+
 
   return function( butter, options ){
 
@@ -15,12 +14,21 @@ define( [ "dialog/dialog", "util/lang", "text!layouts/header.html" ],
         _shareButton,
         _authButton;
 
+
+   
+  var LocalizationManager = butter['locales'];
+  var DEFAULT_AUTH_BUTTON_TEXT = LocalizationManager.getLocalizedText("butter-header-auth-text"),
+      DEFAULT_AUTH_BUTTON_TITLE = LocalizationManager.getLocalizedText("butter-header-auth-titles");
+
     _title = _rootElement.querySelector(".butter-name");
     _title.innerHTML = options.value( "title" ) || "Popcorn Maker";
 
     _rootElement = document.body.insertBefore( _rootElement, document.body.firstChild );
 
     _saveButton = document.getElementById( "butter-header-save" );
+    _saveButton.setAttribute("title", LocalizationManager.getLocalizedText("butter-header-save-title"));
+_saveButton.innerHTML = LocalizationManager.getLocalizedText("butter-header-save-text");
+    
     _sourceButton = document.getElementById( "butter-header-source" );
     _shareButton = document.getElementById( "butter-header-share" );
     _authButton = document.getElementById( "butter-header-auth" );
