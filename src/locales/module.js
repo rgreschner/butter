@@ -3,9 +3,9 @@
  * obtain one at http://www.mozillapopcorn.org/butter-license.txt */
 
 /**
- * Module: EditorModule
+ * Module: LocalizationManager
  *
- * Butter Module for Editors
+ * Butter Module for Text Localization
  */
 
 function getRequiredLocale(){
