@@ -9,6 +9,7 @@ define( [ "dialog/dialog", "util/lang", "text!layouts/header.html"],
 
     var _rootElement = Lang.domFragment( HEADER_TEMPLATE ),
         _title,
+        _loadButton,
         _saveButton,
         _sourceButton,
         _shareButton,
@@ -26,20 +27,31 @@ define( [ "dialog/dialog", "util/lang", "text!layouts/header.html"],
 
 
     _loadButton = document.getElementById( "butter-header-load" );
-    _loadButton.setAttribute("title", LocalizationManager.getLocalizedText("butter-header-load:title"));
-    _loadButton.innerHTML = LocalizationManager.getLocalizedText("butter-header-load:text");
-
-    _saveButton = document.getElementById( "butter-header-save" );
-    _saveButton.setAttribute("title", LocalizationManager.getLocalizedText("butter-header-save:title"));
-    _saveButton.innerHTML = LocalizationManager.getLocalizedText("butter-header-save:text");
+    if (null != _loadButton){
+      _loadButton.setAttribute("title", LocalizationManager.getLocalizedText("butter-header-load:title"));
+      _loadButton.innerHTML = LocalizationManager.getLocalizedText("butter-header-load:text");
+    }
 
     
+    _saveButton = document.getElementById( "butter-header-save" );
+    if (null != _saveButton){
+      _saveButton.setAttribute("title", LocalizationManager.getLocalizedText("butter-header-save:title"));
+      _saveButton.innerHTML = LocalizationManager.getLocalizedText("butter-header-save:text");
+    }
+    
     _sourceButton = document.getElementById( "butter-header-source" );
-    _sourceButton.setAttribute("title", LocalizationManager.getLocalizedText("butter-header-source:title"));
-    _sourceButton.innerHTML = LocalizationManager.getLocalizedText("butter-header-source:text");
+    if (null != _sourceButton){
+      _sourceButton.setAttribute("title", LocalizationManager.getLocalizedText("butter-header-source:title"));
+      _sourceButton.innerHTML = LocalizationManager.getLocalizedText("butter-header-source:text");
+    }
+
     _shareButton = document.getElementById( "butter-header-share" );
-    _shareButton.setAttribute("title", LocalizationManager.getLocalizedText("butter-header-share:title"));
-    _shareButton.innerHTML = LocalizationManager.getLocalizedText("butter-header-share:text");
+    if (null != _shareButton)
+    { 
+      _shareButton.setAttribute("title", LocalizationManager.getLocalizedText("butter-header-share:title"));
+      _shareButton.innerHTML = LocalizationManager.getLocalizedText("butter-header-share:text");
+    }
+
     _authButton = document.getElementById( "butter-header-auth" );
 
     document.body.classList.add( "butter-header-spacing" );
