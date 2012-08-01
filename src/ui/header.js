@@ -32,6 +32,7 @@ define( [ "dialog/dialog", "util/lang", "text!layouts/header.html"],
     _saveButton = document.getElementById( "butter-header-save" );
     _saveButton.setAttribute("title", LocalizationManager.getLocalizedText("butter-header-save:title"));
     _saveButton.innerHTML = LocalizationManager.getLocalizedText("butter-header-save:text");
+
     
     _sourceButton = document.getElementById( "butter-header-source" );
     _sourceButton.setAttribute("title", LocalizationManager.getLocalizedText("butter-header-source:title"));
