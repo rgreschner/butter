@@ -86,6 +86,15 @@ app.configure( function() {
       return next();
     })
     .set('view options', {layout: false});
+	/* Redirect to more specific
+	 * locales.
+	 */
+	app.get('/src/locales/de.json', function(req, res) {
+		res.redirect('/src/locales/de-DE.json'); 
+	});
+	app.get('/src/locales/en.json', function(req, res) {
+		res.redirect('/src/locales/en-US.json'); 
+	});
 });
 
 app.configure( 'development', function() {

@@ -9,16 +9,18 @@
  */
 
 function getRequiredLocale(){
-	return ["text!locales/de-DE.json"];
+	locale = window.navigator.userLanguage || window.navigator.language;
+	return ["text!locales/"+locale+".json","text!locales/en-US.json"];
 }
 
 define( getRequiredLocale(),
-  function( CurrentLocaleText ){
+  function( CurrentLocaleText, FallbackLocaleText ){
 
   function LocalizationManager(  ){
 	this._locale = JSON.parse(CurrentLocaleText);
 	this.getLocalizedText = function(name){
-		return this._locale[name];
+		localizedText = this._locale[name];
+		return localizedText;
 	}
   }
 
