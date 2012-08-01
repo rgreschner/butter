@@ -17,20 +17,28 @@ define( [ "dialog/dialog", "util/lang", "text!layouts/header.html"],
 
    
   var LocalizationManager = butter['locales'];
-  var DEFAULT_AUTH_BUTTON_TEXT = LocalizationManager.getLocalizedText("butter-header-auth-text"),
-      DEFAULT_AUTH_BUTTON_TITLE = LocalizationManager.getLocalizedText("butter-header-auth-titles");
-
+  var DEFAULT_AUTH_BUTTON_TEXT = LocalizationManager.getLocalizedText("butter-header-auth:text"),
+      DEFAULT_AUTH_BUTTON_TITLE = LocalizationManager.getLocalizedText("butter-header-auth:title");
     _title = _rootElement.querySelector(".butter-name");
     _title.innerHTML = options.value( "title" ) || "Popcorn Maker";
 
     _rootElement = document.body.insertBefore( _rootElement, document.body.firstChild );
 
+
+    _loadButton = document.getElementById( "butter-header-load" );
+    _loadButton.setAttribute("title", LocalizationManager.getLocalizedText("butter-header-load:title"));
+    _loadButton.innerHTML = LocalizationManager.getLocalizedText("butter-header-load:text");
+
     _saveButton = document.getElementById( "butter-header-save" );
-    _saveButton.setAttribute("title", LocalizationManager.getLocalizedText("butter-header-save-title"));
-_saveButton.innerHTML = LocalizationManager.getLocalizedText("butter-header-save-text");
+    _saveButton.setAttribute("title", LocalizationManager.getLocalizedText("butter-header-save:title"));
+    _saveButton.innerHTML = LocalizationManager.getLocalizedText("butter-header-save:text");
     
     _sourceButton = document.getElementById( "butter-header-source" );
+    _sourceButton.setAttribute("title", LocalizationManager.getLocalizedText("butter-header-source:title"));
+    _sourceButton.innerHTML = LocalizationManager.getLocalizedText("butter-header-source:text");
     _shareButton = document.getElementById( "butter-header-share" );
+    _shareButton.setAttribute("title", LocalizationManager.getLocalizedText("butter-header-share:title"));
+    _shareButton.innerHTML = LocalizationManager.getLocalizedText("butter-header-share:text");
     _authButton = document.getElementById( "butter-header-auth" );
 
     document.body.classList.add( "butter-header-spacing" );
