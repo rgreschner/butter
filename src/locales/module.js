@@ -9,7 +9,7 @@
  */
 
 function getRequiredLocale(){
-	locale = window.navigator.userLanguage || window.navigator.language;
+	var locale = window.navigator.userLanguage || window.navigator.language;
 	return ["text!locales/"+locale+".json","text!locales/en-US.json"];
 }
 
@@ -19,9 +19,9 @@ define( getRequiredLocale(),
   function LocalizationManager(  ){
 	this._locale = JSON.parse(CurrentLocaleText);
 	this.getLocalizedText = function(name){
-		localizedText = this._locale[name];
+		var localizedText = this._locale[name];
 		return localizedText;
-	}
+	};
   }
 
   LocalizationManager.__moduleName = "locales";

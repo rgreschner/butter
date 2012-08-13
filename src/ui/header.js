@@ -8,67 +8,41 @@ define( [ "dialog/dialog", "util/lang", "text!layouts/header.html"],
     options = options || {};
 
     var _rootElement = Lang.domFragment( HEADER_TEMPLATE ),
-        _title,
-        _loadButton,
-        _saveButton,
-        _sourceButton,
-        _shareButton,
-        _authButton;
+        _saveButton = _rootElement.querySelector( ".butter-save-btn" ),
+		_sourceButton,
+        _authButton = _rootElement.querySelector( ".butter-login-btn" );
 
 
    
   var LocalizationManager = butter['locales'];
   var DEFAULT_AUTH_BUTTON_TEXT = LocalizationManager.getLocalizedText("butter-header-auth:text"),
       DEFAULT_AUTH_BUTTON_TITLE = LocalizationManager.getLocalizedText("butter-header-auth:title");
-    _title = _rootElement.querySelector(".butter-name");
-    _title.innerHTML = options.value( "title" ) || "Popcorn Maker";
 
     _rootElement = document.body.insertBefore( _rootElement, document.body.firstChild );
-
-
-    _loadButton = document.getElementById( "butter-header-load" );
-    if (null != _loadButton){
-      _loadButton.setAttribute("title", LocalizationManager.getLocalizedText("butter-header-load:title"));
-      _loadButton.innerHTML = LocalizationManager.getLocalizedText("butter-header-load:text");
-    }
-
     
-    _saveButton = document.getElementById( "butter-header-save" );
     if (null != _saveButton){
       _saveButton.setAttribute("title", LocalizationManager.getLocalizedText("butter-header-save:title"));
       _saveButton.innerHTML = LocalizationManager.getLocalizedText("butter-header-save:text");
     }
     
-    _sourceButton = document.getElementById( "butter-header-source" );
-    if (null != _sourceButton){
-      _sourceButton.setAttribute("title", LocalizationManager.getLocalizedText("butter-header-source:title"));
-      _sourceButton.innerHTML = LocalizationManager.getLocalizedText("butter-header-source:text");
-    }
-
-    _shareButton = document.getElementById( "butter-header-share" );
-    if (null != _shareButton)
-    { 
-      _shareButton.setAttribute("title", LocalizationManager.getLocalizedText("butter-header-share:title"));
-      _shareButton.innerHTML = LocalizationManager.getLocalizedText("butter-header-share:text");
-    }
-
-    _authButton = document.getElementById( "butter-header-auth" );
-
     document.body.classList.add( "butter-header-spacing" );
+    if (null != _sourceButton)
+	{
+		_sourceButton.addEventListener( "click", function( e ){
 
-    _sourceButton.addEventListener( "click", function( e ){
+		  var exportPackage = {
+			html: butter.getHTML(),
+			json: butter.exportProject()
+		  };
 
-      var exportPackage = {
-        html: butter.getHTML(),
-        json: butter.exportProject()
-      };
+		  Dialog.spawn( "export", {
+			data: exportPackage,
+		  }).open();
 
-      Dialog.spawn( "export", {
-        data: exportPackage,
-      }).open();
+		}, false );
 
-    }, false );
-
+	}
+	
     function authenticationRequired( successCallback, errorCallback ){
       if ( butter.cornfield.authenticated() && successCallback && typeof successCallback === "function" ) {
         successCallback();
@@ -93,7 +67,9 @@ define( [ "dialog/dialog", "util/lang", "text!layouts/header.html"],
       });
     }
 
-    _authButton.addEventListener( "click", authenticationRequired, false );
+	if (null != _authButton) {
+		_authButton.addEventListener( "click", authenticationRequired, false );
+	}
 
     function showErrorDialog( message, callback ){
       var dialog = Dialog.spawn( "error-message", {
@@ -147,9 +123,11 @@ define( [ "dialog/dialog", "util/lang", "text!layouts/header.html"],
       }
     }
 
-    _saveButton.addEventListener( "click", function( e ){
-      authenticationRequired( doSave );
-    }, false );
+	if (null != _saveButton){
+		_saveButton.addEventListener( "click", function( e ){
+		  authenticationRequired( doSave );
+		}, false );
+	}
 
     function doLogout() {
       butter.cornfield.logout( logoutDisplay );
@@ -163,10 +141,12 @@ define( [ "dialog/dialog", "util/lang", "text!layouts/header.html"],
     }
 
     function logoutDisplay() {
-      _authButton.removeEventListener( "click", doLogout, false );
-      _authButton.innerHTML = DEFAULT_AUTH_BUTTON_TEXT;
-      _authButton.title = DEFAULT_AUTH_BUTTON_TITLE;
-      _authButton.addEventListener( "click", authenticationRequired, false );
+	  if (null != _authButton) {
+		  _authButton.removeEventListener( "click", doLogout, false );
+		  _authButton.innerHTML = DEFAULT_AUTH_BUTTON_TEXT;
+		  _authButton.title = DEFAULT_AUTH_BUTTON_TITLE;
+		  _authButton.addEventListener( "click", authenticationRequired, false );
+	  }
     }
 
     if ( butter.cornfield.authenticated() ) {
