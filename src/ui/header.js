@@ -8,37 +8,12 @@ define( [ "dialog/dialog", "util/lang", "text!layouts/header.html" ],
 
     options = options || {};
 
-    var _rootElement = Lang.domFragment( HEADER_TEMPLATE ),
-        _title,
-        _saveButton,
-        _sourceButton,
-        _shareButton,
-        _authButton;
+    var _this = this,
+        _rootElement = Lang.domFragment( HEADER_TEMPLATE, ".butter-header" ),
+        _saveButton = _rootElement.querySelector( ".butter-save-btn" ),
+        _authButton = _rootElement.querySelector( ".butter-login-btn" );
 
-    _title = _rootElement.querySelector(".butter-name");
-    _title.innerHTML = options.value( "title" ) || "Popcorn Maker";
-
-    _rootElement = document.body.insertBefore( _rootElement, document.body.firstChild );
-
-    _saveButton = document.getElementById( "butter-header-save" );
-    _sourceButton = document.getElementById( "butter-header-source" );
-    _shareButton = document.getElementById( "butter-header-share" );
-    _authButton = document.getElementById( "butter-header-auth" );
-
-    document.body.classList.add( "butter-header-spacing" );
-
-    _sourceButton.addEventListener( "click", function( e ){
-
-      var exportPackage = {
-        html: butter.getHTML(),
-        json: butter.exportProject()
-      };
-
-      Dialog.spawn( "export", {
-        data: exportPackage,
-      }).open();
-
-    }, false );
+    _this.element = _rootElement;
 
     function authenticationRequired( successCallback, errorCallback ){
       if ( butter.cornfield.authenticated() && successCallback && typeof successCallback === "function" ) {
@@ -80,30 +55,6 @@ define( [ "dialog/dialog", "util/lang", "text!layouts/header.html" ],
       });
       dialog.open();
     }
-
-    _shareButton.addEventListener( "click", function( e ){
-      function publish(){
-        butter.cornfield.publish( butter.project.id, function( e ){
-          if( e.error !== "okay" ){
-            showErrorDialog( "There was a problem saving your project. Please try again." );
-            return;
-          }
-          else{
-            var url = e.url;
-            Dialog.spawn( "share", {
-              data: url
-            }).open();
-          }
-        });
-      }
-
-      function prepare(){
-        // (Re-)Save first, and publish
-        doSave( publish );
-      }
-
-      authenticationRequired( prepare );
-    }, false );
 
     function doSave( callback ){
 
@@ -173,6 +124,11 @@ define( [ "dialog/dialog", "util/lang", "text!layouts/header.html" ],
         loginDisplay();
       });
     }
+
+    this.attachToDOM = function() {
+      document.body.classList.add( "butter-header-spacing" );
+      document.body.insertBefore( _rootElement, document.body.firstChild );
+    };
 
   };
 

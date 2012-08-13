@@ -2,35 +2,38 @@
  * If a copy of the MIT license was not distributed with this file, you can
  * obtain one at http://www.mozillapopcorn.org/butter-license.txt */
 
-define( [ "core/logger", "core/eventmanager", "util/dragndrop" ], function( Logger, EventManagerWrapper, DragNDrop ){
-
-  var __guid = 0;
+define( [ "core/logger", "core/eventmanager", "util/dragndrop",
+          "util/lang", "text!layouts/trackevent.html" ],
+  function( Logger, EventManagerWrapper, DragNDrop,
+            LangUtils, TRACKEVENT_LAYOUT ) {
 
   return function( trackEvent, type, inputOptions ){
 
-    var _id = "TrackEventView" + __guid++,
-        _element = document.createElement( "div" ),
+    var _element = LangUtils.domFragment( TRACKEVENT_LAYOUT, ".butter-track-event" ),
         _zoom = 1,
         _type = type,
         _start = inputOptions.start || 0,
         _end = inputOptions.end || _start + 1,
         _parent,
         _handles,
-        _typeElement = document.createElement( "div" ),
+        _typeElement = _element.querySelector( ".title" ),
         _draggable,
         _resizable,
         _trackEvent = trackEvent,
         _dragging = false,
+        _resizing = false,
+        _padding = 0,
+        _elementText,
         _this = this;
 
     EventManagerWrapper( _this );
 
-    _element.appendChild( _typeElement );
-
-    function toggleHandles( state ){
-      _handles[ 0 ].style.visibility = state ? "visible" : "hidden";
-      _handles[ 1 ].style.visibility = state ? "visible" : "hidden";
-    } //toggleHandles
+    function toggleHandles( state ) {
+      if ( _parent ) {
+        _handles[ 0 ].style.visibility = state ? "visible" : "hidden";
+        _handles[ 1 ].style.visibility = state ? "visible" : "hidden";
+      }
+    }
 
     function resetContainer(){
       _element.style.left = _start * _zoom + "px";
@@ -85,8 +88,17 @@ define( [ "core/logger", "core/eventmanager", "util/dragndrop" ], function( Logg
         get: function(){ return _type; },
         set: function( val ){
           _type = val;
-          _typeElement.innerHTML = _type;
           _element.setAttribute( "data-butter-trackevent-type", _type );
+        }
+      },
+      elementText: {
+        enumerable: true,
+        get: function() {
+          return _elementText;
+        },
+        set: function( val ) {
+          _elementText = val;
+          _typeElement.innerHTML = _elementText;
         }
       },
       selected: {
@@ -107,6 +119,12 @@ define( [ "core/logger", "core/eventmanager", "util/dragndrop" ], function( Logg
           return _dragging;
         }
       },
+      resizing: {
+        enumerable: true,
+        get: function() {
+          return _resizing;
+        }
+      },
       zoom: {
         enumerable: true,
         get: function(){
@@ -115,13 +133,6 @@ define( [ "core/logger", "core/eventmanager", "util/dragndrop" ], function( Logg
         set: function( val ){
           _zoom = val;
           resetContainer();
-        }
-      },
-      id: {
-        enumerable: true,
-        configurable: false,
-        get: function(){
-          return _id;
         }
       },
       parent: {
@@ -148,6 +159,14 @@ define( [ "core/logger", "core/eventmanager", "util/dragndrop" ], function( Logg
 
             if( _parent.element && _parent.element.parentNode && _parent.element.parentNode.parentNode ){
 
+              // Capture the element's computed style on initialization
+              var elementStyle = getComputedStyle( _element ),
+                  paddingLeft = elementStyle.paddingLeft ? +elementStyle.paddingLeft.substring( 0, elementStyle.paddingLeft.length - 2 ) : 0,
+                  paddingRight = elementStyle.paddingRight ? +elementStyle.paddingRight.substring( 0, elementStyle.paddingRight.length - 2 ) : 0;
+
+              // Store padding values to negate from width calculations
+              _padding = paddingLeft + paddingRight;
+
               _draggable = DragNDrop.draggable( _element, {
                 containment: _parent.element.parentNode,
                 scroll: _parent.element.parentNode.parentNode,
@@ -162,12 +181,20 @@ define( [ "core/logger", "core/eventmanager", "util/dragndrop" ], function( Logg
                 },
                 revert: true
               });
+
               _draggable.selected = _trackEvent.selected;
 
               _resizable = DragNDrop.resizable( _element, {
                 containment: _parent.element.parentNode,
                 scroll: _parent.element.parentNode.parentNode,
-                stop: movedCallback
+                padding: _padding,
+                start: function() {
+                  _resizing = true;
+                },
+                stop: function() {
+                  _resizing = false;
+                  movedCallback();
+                }
               });
 
               _element.setAttribute( "data-butter-draggable-type", "trackevent" );
@@ -196,9 +223,8 @@ define( [ "core/logger", "core/eventmanager", "util/dragndrop" ], function( Logg
 
     function movedCallback() {
       _element.style.top = "0px";
-      var rect = _element.getClientRects()[ 0 ];
       _start = _element.offsetLeft / _zoom;
-      _end = _start + rect.width / _zoom;
+      _end = _start + ( _element.offsetWidth - _padding ) / _zoom;
       _trackEvent.update({
         start: _start,
         end: _end
@@ -208,7 +234,6 @@ define( [ "core/logger", "core/eventmanager", "util/dragndrop" ], function( Logg
     _element.className = "butter-track-event";
     _this.type = _type;
 
-    _element.id = _id;
     _this.update( inputOptions );
 
     _element.addEventListener( "mousedown", function ( e ) {
@@ -223,13 +248,6 @@ define( [ "core/logger", "core/eventmanager", "util/dragndrop" ], function( Logg
     _element.addEventListener( "mouseout", function ( e ) {
       _this.dispatch( "trackeventmouseout", { originalEvent: e, trackEvent: _trackEvent } );
     }, false );
-
-    _element.addEventListener( "dblclick", function ( e ) {
-      _this.dispatch( "trackeventdoubleclicked", { originalEvent: e, trackEvent: _trackEvent } );
-    }, false);
-    _element.addEventListener( "click", function ( e ) {
-      _this.dispatch( "trackeventclicked", { originalEvent: e, trackEvent: _trackEvent } );
-    }, false);
 
     function select() {
       _draggable.selected = true;

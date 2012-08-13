@@ -1,8 +1,22 @@
-// VARIABLES
-@HEADER_SPACING: 50px;
+// SPACING
+@HEADER_SPACING: 62px;
 @TRAY_HEIGHT: 220px;
 @TRAY_SPACING: @TRAY_HEIGHT - 10;
 @TRAY_SPACING_MINIMIZED: 35px;
+
+// Z INDEXES
+@BASE_Z_INDEX: 100000000;
+@HEADER_Z_INDEX: @BASE_Z_INDEX + 1;
+@TRAY_Z_INDEX: @BASE_Z_INDEX + 1;
+@MODAL_Z_INDEX: @BASE_Z_INDEX + 100;
+@HIGHLIGHT_Z_INDEX: @TRAY_Z_INDEX - 300;
+@MEDIA_PROPERTIES_Z_INDEX: @HIGHLIGHT_Z_INDEX;
+
+// EDITOR
+@EDITOR_WIDTH: 350px;
+
+// COLORS
+@COLOR_SELECTION: #FEF49C;
 
 // MIXINS
 .selectable(@param) {
@@ -33,7 +47,7 @@
 
 ._gradient( @color1, @color2, @startLoc, @endLoc, @from, @to, @ieFallback: false, @ieGradientType: 0 ) when not ( @ieFallback ) {
   // Internal mixin for generating gradients when there are no rounded corners
-  filter: e( %( "progid:DXImageTransform.Microsoft.Gradient(color1orStr='%d', EndColorStr='%d', GradientType=%d)", @color1, @color2, @ieGradientType ) );
+  filter: e( %( "progid:DXImageTransform.Microsoft.Gradient(startColorstr='%d', endColorstr='%d', GradientType=%d)", @color1, @color2, @ieGradientType ) );
   background: -webkit-gradient( linear, @startLoc, @endLoc, color-stop( @from, @color1 ), color-stop( @to, @color2 ) );
   background: -webkit-linear-gradient( @startLoc, @color1 @from, @color2 @to );
   background: -moz-linear-gradient( @startLoc, @color1 @from, @color2 @to );

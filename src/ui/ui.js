@@ -2,8 +2,12 @@
  * If a copy of the MIT license was not distributed with this file, you can
  * obtain one at http://www.mozillapopcorn.org/butter-license.txt */
 
-define( [ "core/eventmanager", "./toggler", "./logo-spinner", "./context-button", "./header", "./unload-dialog" ],
-        function( EventManagerWrapper, Toggler, LogoSpinner, ContextButton, Header, UnloadDialog ){
+define( [ "core/eventmanager", "./toggler",
+          "./header", "./unload-dialog",
+          "./tray" ],
+  function( EventManagerWrapper, Toggler,
+            Header, UnloadDialog,
+            Tray ){
 
   var TRANSITION_DURATION = 500,
       // Butter's UI is written in LESS, but deployed as CSS.
@@ -11,55 +15,6 @@ define( [ "core/eventmanager", "./toggler", "./logo-spinner", "./context-button"
       // CSS file, or build CSS from LESS in the browser.
       BUTTER_CSS_FILE = "{css}/butter.ui.css",
       BUTTER_LESS_FILE = "{css}/butter.ui.less";
-
-  function Area( id, element ){
-    var _element,
-        _components = [],
-        _this = this;
-
-    EventManagerWrapper( _this );
-
-    this.element = _element = element || document.createElement( "div" );
-    _element.id = id;
-    this.items = {};
-
-    this.addComponent = function( element, options ){
-      var component = new Component( element, options );
-      _components.push( component );
-      _element.appendChild( component.element );
-    };
-
-    this.setContentState = function( state ){
-      for( var i=0, l=_components.length; i<l; ++i ){
-        _components[ i ].setState( state );
-      }
-    };
-  }
-
-  function Component( element, options ){
-    options = options || {};
-    var _onTransitionIn = options.transitionIn || function(){},
-        _onTransitionInComplete = options.transitionInComplete || function(){},
-        _onTransitionOut = options.transitionOut || function(){},
-        _onTransitionOutComplete = options.transitionOutComplete || function(){},
-        _validStates = options.states || [],
-        _enabled = false;
-
-    this.element = element;
-
-    this.setState = function( state ){
-      if( ( !_validStates || _validStates.indexOf( state ) > -1 ) && !_enabled ){
-        _enabled = true;
-        _onTransitionIn();
-        setTimeout( _onTransitionInComplete, TRANSITION_DURATION );
-      }
-      else if( _enabled ){
-        _onTransitionOut();
-        setTimeout( _onTransitionOutComplete, TRANSITION_DURATION );
-        _enabled = false;
-      }
-    };
-  }
 
   var __unwantedKeyPressElements = [
     "TEXTAREA",
@@ -73,47 +28,26 @@ define( [ "core/eventmanager", "./toggler", "./logo-spinner", "./context-button"
 
   function UI( butter ){
 
-    var _areas = {},
-        _contentState = [],
-        _state = true,
-        _logoSpinner,
+    var _visibility = true,
         _uiConfig = butter.config,
         _uiOptions = _uiConfig.value( "ui" ),
         _this = this;
 
     EventManagerWrapper( _this );
 
-    // Expose Area to external bodies through `butter.ui`
-    // Modules should be creating their own Areas when possible
-    _this.Area = Area;
-
-    _areas.main = new Area( "butter-tray" );
-
     this.contentStateLocked = false;
 
-    var _element = _areas.main.element,
-        _toggler = new Toggler( function ( e ) {
+    this.tray = new Tray();
+    this.header = new Header( butter, _uiConfig );
+
+    // Filled in by the editor module
+    this.editor = null;
+
+    var _toggler = new Toggler( this.tray.rootElement.querySelector( ".butter-toggle-button" ),
+        function ( e ) {
           butter.ui.visible = !butter.ui.visible;
           _toggler.state = !_toggler.state;
         }, "Show/Hide Timeline" );
-
-    _element.setAttribute( "data-butter-exclude", "true" );
-    _element.className = "butter-tray";
-
-    _element.appendChild( _toggler.element );
-
-    _areas.work = new Area( "work" );
-    _areas.statusbar = new Area( "status-bar" );
-    _areas.tools = new Area( "tools" );
-
-    var logoContainer = document.createElement( "div" );
-    logoContainer.id = "butter-loading-container";
-    _logoSpinner = LogoSpinner( logoContainer );
-    _element.appendChild( logoContainer );
-
-    _element.appendChild( _areas.statusbar.element );
-    _element.appendChild( _areas.work.element );
-    _element.appendChild( _areas.tools.element );
 
     if ( _uiOptions.enabled ) {
       if ( _uiOptions.onLeaveDialog ) {
@@ -121,7 +55,6 @@ define( [ "core/eventmanager", "./toggler", "./logo-spinner", "./context-button"
       }
       document.body.classList.add( "butter-header-spacing" );
       document.body.classList.add( "butter-tray-spacing" );
-      document.body.appendChild( _element );
       butter.listen( "mediaadded", function( e ){
         e.data.createView();
       });
@@ -149,6 +82,11 @@ define( [ "core/eventmanager", "./toggler", "./logo-spinner", "./context-button"
       }
     };
 
+    this.setEditor = function( editorAreaDOMRoot ) {
+      _this.editor = editorAreaDOMRoot;
+      document.body.appendChild( editorAreaDOMRoot );
+    };
+
     this.load = function( onReady ){
       if( _uiOptions.enabled ){
         var loadOptions = {};
@@ -169,120 +107,39 @@ define( [ "core/eventmanager", "./toggler", "./logo-spinner", "./context-button"
           _this.loadIcons( _uiConfig.value( "icons" ), _uiConfig.value( "dirs" ).resources || "" );
           onReady();
         });
+        
+        _this.tray.attachToDOM();
       }
       else{
         onReady();
       }
     };
 
-    this.registerStateToggleFunctions = function( state, events ){
-      _this.listen( "contentstatechanged", function( e ){
-        if( e.data.oldState === state ){
-          events.transitionOut( e );
-        }
-        if( e.data.newState === state ){
-          events.transitionIn( e );
-        }
-      });
-    };
-
-    this.pushContentState = function( state ){
-      if( _this.contentStateLocked ){
-        return;
-      }
-      var oldState = _this.contentState;
-      _contentState.push( state );
-      _element.setAttribute( "data-butter-content-state", _this.contentState );
-      for( var a in _areas ){
-        if( _areas.hasOwnProperty( a ) ){
-          _areas[ a ].setContentState( state );
-        }
-      }
-      _this.dispatch( "contentstatechanged", {
-        oldState: oldState,
-        newState: _this.contentState
-      });
-    };
-
-    this.popContentState = function(){
-      if( _this.contentStateLocked ){
-        return;
-      }
-      var oldState = _contentState.pop(),
-          newState = _this.contentState;
-      _element.setAttribute( "data-butter-content-state", newState );
-      for( var a in _areas ){
-        if( _areas.hasOwnProperty( a ) ){
-          _areas[ a ].setContentState( newState );
-        }
-      }
-      _this.dispatch( "contentstatechanged", {
-        oldState: oldState,
-        newState: newState
-      });
-      return oldState;
-    };
-
-    this.setContentState = function( newState ){
-      var oldState = _contentState.pop();
-      _contentState = [ newState ];
-      _element.setAttribute( "data-butter-content-state", newState );
-      for( var a in _areas ){
-        if( _areas.hasOwnProperty( a ) ){
-          _areas[ a ].setContentState( newState );
-        }
-      }
-      _this.dispatch( "contentstatechanged", {
-        oldState: oldState,
-        newState: newState
-      });
-      return oldState;
-    };
-
     Object.defineProperties( this, {
-      contentState: {
-        configurable: false,
-        enumerable: true,
-        get: function(){
-          if( _contentState.length > 0 ){
-            return _contentState[ _contentState.length - 1 ];
-          }
-          return null;
-        }
-      },
-      element: {
-        configurable: false,
-        enumerable: true,
-        get: function(){
-          return _element;
-        }
-      },
-      areas: {
-        configurable: false,
-        enumerable: true,
-        get: function(){
-          return _areas;
+      enabled: {
+        get: function() {
+          return _uiOptions.enabled;
         }
       },
       visible: {
         enumerable: true,
         get: function(){
-          return _state;
+          return _visibility;
         },
         set: function( val ){
-          if( _state !== val ){
-            _state = val;
-            if( _state ){
+          if( _visibility !== val ){
+            _visibility = val;
+            if( _visibility ){
               document.body.classList.remove( "tray-minimized" );
-              _element.classList.remove( "minimized" );
+              this.tray.rootElement.classList.remove( "minimized" );
               _this.dispatch( "uivisibilitychanged", true );
             }
             else {
               document.body.classList.add( "tray-minimized" );
-              _element.classList.add( "minimized" );
-              _this.dispatch( "uivisibilitychanged", false );
-            } //if
-          } //if
+              this.tray.rootElement.classList.add( "minimized" );
+              _this.dispatch( "uivisibilitychanged", true );
+            }
+          }
         }
       }
     });
@@ -306,26 +163,6 @@ define( [ "core/eventmanager", "./toggler", "./logo-spinner", "./context-button"
 
     butter.listen( "trackeventupdated", function( e ) {
       orderedTrackEvents.sort( sortTrackEvents );
-    }); // listen
-
-    var orderedTracks = butter.orderedTracks = [],
-        sortTracks = function( a, b ) {
-          return a.order > b.order;
-        };
-
-    butter.listen( "trackadded", function( e ) {
-      e.data.listen( "trackorderchanged", function( e ) {
-        orderedTracks.sort( sortTracks );
-      }); // listen
-      orderedTracks.push( e.data );
-      orderedTracks.sort( sortTracks );
-    }); // listen
-
-    butter.listen( "trackremoved", function( e ) {
-      var index = orderedTracks.indexOf( e.data );
-      if( index > -1 ){
-        orderedTracks.splice( index, 1 );
-      } // if
     }); // listen
 
     var processKey = {
@@ -353,16 +190,19 @@ define( [ "core/eventmanager", "./toggler", "./logo-spinner", "./context-button"
       38: function( e ) { // up key
         var track,
             trackEvent,
-            nextTrack;
+            nextTrack,
 
-        if ( butter.selectedEvents.length ) {
+            //copy this selectedEvents because it will change inside loop
+            selectedEvents = butter.selectedEvents.slice();
+
+        if ( selectedEvents.length ) {
           e.preventDefault();
         }
 
-        for( var i = 0, seLength = butter.selectedEvents.length; i < seLength; i++ ) {
-          trackEvent = butter.selectedEvents[ i ];
+        for( var i = 0, seLength = selectedEvents.length; i < seLength; i++ ) {
+          trackEvent = selectedEvents[ i ];
           track = trackEvent.track;
-          nextTrack = orderedTracks[ orderedTracks.indexOf( track ) - 1 ];
+          nextTrack = butter.currentMedia.getLastTrack( track );
           if( nextTrack ) {
             track.removeTrackEvent( trackEvent );
             nextTrack.addTrackEvent( trackEvent );
@@ -383,16 +223,19 @@ define( [ "core/eventmanager", "./toggler", "./logo-spinner", "./context-button"
       40: function( e ) { // down key
         var track,
             trackEvent,
-            nextTrack;
+            nextTrack,
 
-        if ( butter.selectedEvents.length ) {
+            //copy this selectedEvents because it will change inside loop
+            selectedEvents = butter.selectedEvents.slice();
+
+        if ( selectedEvents.length ) {
           e.preventDefault();
         }
 
-        for( var i = 0, seLength = butter.selectedEvents.length; i < seLength; i++ ) {
-          trackEvent = butter.selectedEvents[ i ];
+        for( var i = 0, seLength = selectedEvents.length; i < seLength; i++ ) {
+          trackEvent = selectedEvents[ i ];
           track = trackEvent.track;
-          nextTrack = orderedTracks[ orderedTracks.indexOf( track ) + 1 ];
+          nextTrack = butter.currentMedia.getNextTrack( track );
           if( nextTrack ) {
             track.removeTrackEvent( trackEvent );
             nextTrack.addTrackEvent( trackEvent );
@@ -400,10 +243,7 @@ define( [ "core/eventmanager", "./toggler", "./logo-spinner", "./context-button"
         } // for
       }, // down key
       27: function( e ) { // esc key
-        for( var i = 0; i < butter.selectedEvents.length; i++ ) {
-          butter.selectedEvents[ i ].selected = false;
-        } // for
-        butter.selectedEvents = [];
+        butter.deselectAllTrackEvents();
       }, // esc key
       8: function( e ) { // del key
         if( butter.selectedEvents.length ) {
@@ -411,7 +251,6 @@ define( [ "core/eventmanager", "./toggler", "./logo-spinner", "./context-button"
           for( var i = 0; i < butter.selectedEvents.length; i++ ) {
             butter.selectedEvents[ i ].track.removeTrackEvent( butter.selectedEvents[ i ] );
           } // for
-          butter.selectedEvents = [];
         } // if
       }, // del key
       9: function( e ) { // tab key
@@ -429,12 +268,8 @@ define( [ "core/eventmanager", "./toggler", "./logo-spinner", "./context-button"
               index = orderedTrackEvents.length - 1;
             } // if
           } // if
-          for( var i = 0; i < butter.selectedEvents.length; i++ ) {
-            butter.selectedEvents[ i ].selected = false;
-          } // for
-          butter.selectedEvents = [];
+          butter.deselectAllTrackEvents();
           orderedTrackEvents[ index ].selected = true;
-          butter.selectedEvents.push( orderedTrackEvents[ index ] );
         } // if
       } // tab key
     };
@@ -455,13 +290,10 @@ define( [ "core/eventmanager", "./toggler", "./logo-spinner", "./context-button"
 
     this.loadIndicator = {
       start: function(){
-        _logoSpinner.start();
-        logoContainer.style.display = "block";
+        _this.tray.toggleLoadingSpinner( true );
       },
       stop: function(){
-        _logoSpinner.stop(function(){
-          logoContainer.style.display = "none";
-        });
+        _this.tray.toggleLoadingSpinner( false );
       }
     };
 
@@ -471,9 +303,8 @@ define( [ "core/eventmanager", "./toggler", "./logo-spinner", "./context-button"
       _this.loadIndicator.stop();
       _this.visible = true;
       _toggler.visible = true;
-      ContextButton( butter );
-      if( _uiOptions.enabled ){
-        Header( butter, _uiConfig );
+      if( _uiConfig.value( "ui" ).enabled !== false ){
+        _this.header.attachToDOM();
       }
     });
 

@@ -3,9 +3,11 @@
  * obtain one at http://www.mozillapopcorn.org/butter-license.txt */
 
 define( [ "util/lang", "util/keys", "./base-editor",
-          "text!layouts/trackevent-editor-defaults.html" ],
+          "text!layouts/trackevent-editor-defaults.html",
+          "util/scrollbars" ],
   function( LangUtils, KeysUtils, BaseEditor,
-            DEFAULT_LAYOUT_SNIPPETS ) {
+            DEFAULT_LAYOUT_SNIPPETS,
+            Scrollbars ) {
 
   var __defaultLayouts = LangUtils.domFragment( DEFAULT_LAYOUT_SNIPPETS ),
       __safeKeyUpKeys = [
@@ -16,7 +18,20 @@ define( [ "util/lang", "util/keys", "./base-editor",
                           KeysUtils.DELETE,
                           KeysUtils.TAB,
                           KeysUtils.ESCAPE
-                        ];
+                        ],
+      __googleFonts;
+
+  var xhr = new XMLHttpRequest();
+
+  xhr.open( "GET", "https://www.googleapis.com/webfonts/v1/webfonts?key=AIzaSyBw1zCqXJayewLR3qrcWQLhfryqCzbuV60", false );
+  xhr.onreadystatechange = function() {
+    if ( xhr.readyState === 4 ) {
+      if ( xhr.responseText !== "Not Found" ) {
+        __googleFonts = JSON.parse( xhr.responseText ).items;
+      }
+    }
+  };
+  xhr.send();
 
   /**
    * Class: TrackEventEditor
@@ -30,9 +45,29 @@ define( [ "util/lang", "util/keys", "./base-editor",
    */
   return function( extendObject, butter, rootElement, events ) {
 
+    // Wedge a check for scrollbars into the open event if it exists
+    var oldOpenEvent = events.open;
+
+    extendObject.updateScrollBar = function() {
+      extendObject.vScrollBar.update();
+    };
+
+    events.open = function() {
+      if ( extendObject.vScrollBar ) {
+        extendObject.updateScrollBar();
+      }
+      if ( oldOpenEvent ) {
+        oldOpenEvent.apply( this, arguments );
+      }
+    };
+
     BaseEditor( extendObject, butter, rootElement, events );
 
     extendObject.defaultLayouts = __defaultLayouts.cloneNode( true );
+
+    // A vertical scrollbar may be added if lots of editor content is available (perhaps a large manifest is present for a plugin).
+    // See addVerticalScrollbar below for more details.
+    extendObject.vScrollBars = null;
 
     /**
      * Member: createTargetsList
@@ -107,6 +142,7 @@ define( [ "util/lang", "util/keys", "./base-editor",
         updateOptions[ propertyName ] = element.value;
         callback( trackEvent, updateOptions );
       }, false );
+
       element.addEventListener( "keyup", function( e ) {
         if ( __safeKeyUpKeys.indexOf( e.which ) > -1 ) {
           return;
@@ -122,6 +158,12 @@ define( [ "util/lang", "util/keys", "./base-editor",
             callback( trackEvent, updateOptions );
           }
         }
+      }, false );
+
+      element.addEventListener( "change", function( e ) {
+        var updateOptions = {};
+        updateOptions[ propertyName ] = element.value;
+        trackEvent.update( updateOptions );
       }, false );
     };
 
@@ -157,14 +199,14 @@ define( [ "util/lang", "util/keys", "./base-editor",
         updateOptions[ propertyName ] = element.value;
         trackEvent.update( updateOptions );
       }, false );
-      element.addEventListener( "keyup", function( e ) {
-        if ( __safeKeyUpKeys.indexOf( e.which ) > -1 ) {
-          return;
-        }
-        var updateOptions = {};
-        updateOptions[ propertyName ] = element.value;
-        trackEvent.update( updateOptions );
-      }, false );
+
+      if ( element.type === "number" ) {
+        element.addEventListener( "change", function( e ) {
+          var updateOptions = {};
+          updateOptions[ propertyName ] = element.value;
+          trackEvent.update( updateOptions );
+        }, false );
+      }
     };
 
     /**
@@ -180,21 +222,30 @@ define( [ "util/lang", "util/keys", "./base-editor",
      */
     extendObject.createManifestItem = function( name, manifestEntry, data, trackEvent, itemCallback ) {
       var elem = manifestEntry.elem || "default",
-          propertyArchetype = __defaultLayouts.querySelector( ".trackevent-property." + elem ).cloneNode( true ),
-          editorElement,
           itemLabel = manifestEntry.label || name,
+          isStartOrEnd = [ "start", "end" ].indexOf( name.toLowerCase() ) > -1,
+          units = manifestEntry.units || ( isStartOrEnd ? "seconds" : "" ),
+          propertyArchetype = __defaultLayouts.querySelector( ".trackevent-property." + elem + ( units ? ".units" : "" ) ).cloneNode( true ),
+          editorElement,
           option,
+          manifestEntryOption,
           i, l;
 
-      // Treat 'in' and 'out' specially, changing their titles to 'Start' and 'End' respectively
-      if ( itemLabel === "In" ) {
-        itemLabel = "Start (seconds)";
-      } else if ( itemLabel === "Out" ) {
-        itemLabel = "End (seconds)";
+      // If the manifestEntry was specified to be hidden, or part of an advanced set of options don't use traditional
+      // element building
+      if ( manifestEntry.hidden ) {
+        return;
+      }
+
+      // only populate if this is an input element that has associated units
+      if ( units ) {
+        propertyArchetype.querySelector( ".butter-unit" ).innerHTML = units;
       }
 
       // Grab the element with class 'property-name' to supply the archetype for new manifest entries
-      propertyArchetype.querySelector( ".property-name" ).innerHTML = itemLabel;
+      if ( propertyArchetype.querySelector( ".property-name" ) ) {
+        propertyArchetype.querySelector( ".property-name" ).innerHTML = itemLabel;
+      }
 
       // If the manifest's 'elem' property is 'select', create a <select> element. Otherwise, create an
       // <input>.
@@ -207,8 +258,31 @@ define( [ "util/lang", "util/keys", "./base-editor",
         if ( manifestEntry.options ) {
           for ( i = 0, l = manifestEntry.options.length; i < l; ++i ){
             option = document.createElement( "option" );
-            option.value = option.innerHTML = manifestEntry.options[ i ];
+            manifestEntryOption = manifestEntry.options[ i ];
+
+            // if the manifest has values for options, use the options as labels
+            // and the values as values for the <option> elements
+            if ( manifestEntry.values && manifestEntry.values[ i ] ) {
+              option.innerHTML = manifestEntryOption;
+              option.value = manifestEntry.values[ i ];
+            }
+            else {
+              option.value = option.innerHTML = manifestEntryOption;
+            }
+
             editorElement.appendChild( option );
+          }
+        }
+        else if ( manifestEntry.googleFonts && __googleFonts ) {
+          var font,
+              m,
+              fLen;
+
+          for ( m = 0, fLen = __googleFonts.length; m < fLen; m++ ) {
+            font = document.createElement( "option" );
+
+            font.value = font.innerHTML = __googleFonts[ m ].family;
+            editorElement.appendChild( font );
           }
         }
       }
@@ -286,29 +360,45 @@ define( [ "util/lang", "util/keys", "./base-editor",
      * @param {DOMElement} container: Optional. If specified, elements will be inserted into container, not rootElement
      * @param {Array} ignoreManifestKeys: Optional. Keys in this array are ignored such that elements for them are not created
      */
-    extendObject.createPropertiesFromManifest = function( trackEvent, itemCallback, manifestKeys, container, ignoreManifestKeys ) {
+    extendObject.createPropertiesFromManifest = function( trackEvent, callback, manifestKeys, basicContainer, advancedContainer, ignoreManifestKeys ) {
       var manifestOptions,
           item,
           element,
+          container,
+          optionGroup,
           i, l;
 
-      container = container || extendObject.rootElement;
+      basicContainer = basicContainer || extendObject.rootElement;
+      advancedContainer = advancedContainer || extendObject.rootElement;
 
       if ( !trackEvent.manifest ) {
         throw "Unable to create properties from null manifest. Perhaps trackevent is not initialized properly yet.";
       }
 
       manifestOptions = trackEvent.manifest.options;
+
       manifestKeys = manifestKeys || Object.keys( manifestOptions );
 
       for ( i = 0, l = manifestKeys.length; i < l; ++i ) {
         item = manifestKeys[ i ];
+        optionGroup = manifestOptions[ item ].group ? manifestOptions[ item ].group : "basic";
+        container = optionGroup === "advanced" ? advancedContainer : basicContainer;
         if ( ignoreManifestKeys && ignoreManifestKeys.indexOf( item ) > -1 ) {
           continue;
         }
-        element = extendObject.createManifestItem( item, manifestOptions[ item ], trackEvent.popcornOptions[ item ], trackEvent, itemCallback );
-        container.appendChild( element );
+        element = extendObject.createManifestItem( item, manifestOptions[ item ], trackEvent.popcornOptions[ item ], trackEvent, callback );
+
+        if ( element ) {
+          container.appendChild( element );
+        }
       }
+
+    };
+
+    extendObject.addVerticalScrollbar = function( wrapperElement, contentElement, scrollbarContainerElement ) {
+      extendObject.vScrollBar = new Scrollbars.Vertical( wrapperElement, contentElement );
+      scrollbarContainerElement.appendChild( extendObject.vScrollBar.element );
+      extendObject.vScrollBar.update();
     };
 
   };

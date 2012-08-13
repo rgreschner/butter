@@ -1,10 +1,12 @@
+/*global google*/
 /* This Source Code Form is subject to the terms of the MIT license
  * If a copy of the MIT license was not distributed with this file, you can
  * obtain one at http://www.mozillapopcorn.org/butter-license.txt */
 
 ( function( Butter ) {
 
-  Butter.Editor.register( "googlemap", "load!{{baseDir}}editors/googlemap-editor.html", function( rootElement, butter ) {
+  Butter.Editor.register( "googlemap", "load!{{baseDir}}editors/googlemap-editor.html",
+    function( rootElement, butter, compiledLayout ) {
 
     var _this = this;
 
@@ -17,26 +19,11 @@
         _mapListeners;
 
     /**
-     * Member: onCenterChanged
+     * Member: onDragEnd
      *
-     * GoogleMaps center changed event handler. Updates the associated trackevent after map center is moved.
+     * GoogleMaps drag ended event handler. Updates the associated trackevent after the drag has ended.
      */
     function onDragEnd() {
-      var center = _popcornEventMapReference.getCenter(),
-          updateOptions = {
-            lat: center.lat(),
-            lng: center.lng(),
-            location: ""
-          };
-      _trackEvent.update( updateOptions );
-    }
-
-    /**
-     * Member: onCenterChanged
-     *
-     * GoogleMaps center changed event handler. Updates the associated trackevent after map center is moved.
-     */
-    function onCenterChanged() {
       var center = _popcornEventMapReference.getCenter(),
           updateOptions = {
             lat: center.lat(),
@@ -73,19 +60,6 @@
     }
 
     /**
-     * Member: onTiltChanged
-     *
-     * GoogleMaps tilt changed event handler. Updates the associated trackevent after map tilt is changed.
-     */
-    function onTiltChanged() {
-      var updateOptions = {
-            pitch: _popcornEventMapReference.getTilt(),
-            location: ""
-          };
-      _trackEvent.update( updateOptions );
-    }
-
-    /**
      * Member: setupMapListeners
      *
      * Adds listeners to the google map object to detect change in state.
@@ -94,7 +68,6 @@
       _mapListeners = [];
       _mapListeners.push( google.maps.event.addListener( _popcornEventMapReference, 'dragend', onDragEnd ) );
       _mapListeners.push( google.maps.event.addListener( _popcornEventMapReference, 'zoom_changed', onZoomChanged ) );
-      _mapListeners.push( google.maps.event.addListener( _popcornEventMapReference, 'tilt_changed', onTiltChanged ) );
       _mapListeners.push( google.maps.event.addListener( _popcornEventMapReference, 'heading_changed', onHeadingChanged ) );
     }
 
@@ -106,7 +79,7 @@
     function removeMapListeners() {
       if ( _popcornEventMapReference && _trackEvent.popcornTrackEvent._map ) {
         while ( _mapListeners.length ) {
-          google.maps.event.removeListener( _mapListeners.pop() );  
+          google.maps.event.removeListener( _mapListeners.pop() );
         }
       }
     }
@@ -124,11 +97,11 @@
         _trackEvent.popcornTrackEvent.onmaploaded = function( options, map ){
           _popcornEventMapReference = map;
           setupMapListeners();
-        }
+        };
       }
       else {
         _popcornEventMapReference = _trackEvent.popcornTrackEvent._map;
-        setupMapListeners();        
+        setupMapListeners();
       }
     }
 
@@ -194,7 +167,8 @@
       _trackEvent = trackEvent;
 
       var targetList = _this.createTargetsList( _targets ),
-          optionsContainer = _rootElement.querySelector( ".editor-options" );
+          optionsContainer = _rootElement.querySelector( ".editor-options" ),
+          optionsWrapper = _rootElement.querySelector( ".editor-options-wrapper" );
 
       // Attach the onchange handler to trackEvent is updated when <select> is changed
       _targetSelectElement = targetList.querySelector( "select" );
@@ -222,7 +196,7 @@
                 else {
                   _this.attachInputChangeHandler( element, trackEvent, name, updateTrackEventWithoutTryCatch );
                 }
-                
+
               }
             }
           },
@@ -233,6 +207,8 @@
 
       _this.updatePropertiesFromManifest( trackEvent );
 
+      _this.addVerticalScrollbar( optionsWrapper, optionsContainer, _rootElement );
+      _this.updateScrollBar();
     }
 
     // Extend this object to become a BaseEditor
@@ -246,8 +222,11 @@
           getMapFromTrackEvent();
         });
         setup( trackEvent );
+        _this.applyExtraHeadTags( compiledLayout );
+        _this.updateScrollBar();
       },
       close: function() {
+        _this.removeExtraHeadTags();
         removeMapListeners();
       }
     });
