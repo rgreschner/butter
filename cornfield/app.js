@@ -1,18 +1,20 @@
+/*jshint eqeqeq:false */
 console.log( __dirname );
 
-const express = require('express'),
-      fs = require('fs'),
-      path = require('path'),
-      app = express.createServer(),
-      MongoStore = require('connect-mongo')(express),
-      lessMiddleware = require('less-middleware'),
-      CONFIG = require('config'),
-      TEMPLATES_DIR =  CONFIG.dirs.templates,
-      PUBLISH_DIR = CONFIG.dirs.publish,
-      PUBLISH_PREFIX = CONFIG.dirs.hostname,
-      WWW_ROOT = path.resolve( CONFIG.dirs.wwwRoot || path.join( __dirname, ".." ) ),
-      VALID_TEMPLATES = CONFIG.templates,
-      EXPORT_ASSETS = CONFIG.exportAssets;
+var express = require('express'),
+    fs = require('fs'),
+    path = require('path'),
+    jade = require('jade'),
+    app = express.createServer(),
+    MongoStore = require('connect-mongo')(express),
+    lessMiddleware = require('less-middleware'),
+    CONFIG = require('config'),
+    TEMPLATES_DIR =  CONFIG.dirs.templates,
+    PUBLISH_DIR = CONFIG.dirs.publish,
+    PUBLISH_PREFIX = CONFIG.dirs.hostname,
+    WWW_ROOT = path.resolve( CONFIG.dirs.wwwRoot || path.join( __dirname, ".." ) ),
+    VALID_TEMPLATES = CONFIG.templates,
+    EXPORT_ASSETS = CONFIG.exportAssets;
 
 var templateConfigs = {};
 
@@ -28,7 +30,9 @@ function readTemplateConfig( templateName, templatedPath ) {
 
 // parse configs ahead of any action that has to happen with them
 for ( var templateName in VALID_TEMPLATES ) {
-  readTemplateConfig( templateName, VALID_TEMPLATES[ templateName ] );
+  if ( VALID_TEMPLATES.hasOwnProperty( templateName ) ) {
+    readTemplateConfig( templateName, VALID_TEMPLATES[ templateName ] );
+  }
 }
 
 var canStoreData = true;
@@ -113,6 +117,21 @@ function escapeHTMLinJSON( key, value ) {
   return value;
 }
 
+function writeEmbed( projectEmbedPath, embedUrl, res, url, data ) {
+  if( !writeEmbed.templateFn ) {
+    writeEmbed.templateFn = jade.compile( fs.readFileSync( 'views/embed.jade', 'utf8' ),
+                                          { filename: 'embed.jade', pretty: true } );
+  }
+
+  fs.writeFile( projectEmbedPath, writeEmbed.templateFn( data ), function( err ){
+    if( err ){
+      res.json({ error: 'internal file error' }, 500);
+      return;
+    }
+    res.json({ error: 'okay', url: url });
+  });
+}
+
 function publishRoute( req, res ){
   var email = req.session.email,
       id = req.params.id;
@@ -153,11 +172,13 @@ function publishRoute( req, res ){
 
       if ( template && VALID_TEMPLATES[ template ] ) {
         var projectPath = PUBLISH_DIR + "/" + id + ".html",
+            projectEmbedPath = PUBLISH_DIR + "/" + id + "-embed.html",
             url = PUBLISH_PREFIX + "/" + id + ".html",
+            embedUrl = PUBLISH_PREFIX + "/" + id + "-embed.html",
             projectData = JSON.parse( project.data, escapeHTMLinJSON ),
-            templateBase = VALID_TEMPLATES[ template ].replace( '{{templateBase}}', TEMPLATES_DIR + '/' ),
             templateConfig = templateConfigs[ template ],
-            templateFile = templateConfig.template;
+            templateFile = templateConfig.template,
+            baseHref;
 
         fs.readFile( templateFile, 'utf8', function( err, data ){
 
@@ -170,6 +191,7 @@ function publishRoute( req, res ){
               bodyEndTagIndex,
               externalAssetsString = '',
               popcornString = '',
+              customDataString = '',
               currentMedia,
               currentTrack,
               currentTrackEvent,
@@ -179,15 +201,17 @@ function publishRoute( req, res ){
               headStartTagIndex,
               templateScripts,
               startString,
-              j, k;
+              numSources,
+              j, k, len;
 
           templateURL = templateFile.substring( templateFile.indexOf( '/templates' ), templateFile.lastIndexOf( '/' ) );
-          baseString = '\n  <base href="' + PUBLISH_PREFIX + templateURL + '/"/>';
+          baseHref = PUBLISH_PREFIX + templateURL + "/";
+          baseString = '\n  <base href="' + baseHref + '"/>';
 
           // look for script tags with data-butter-exclude in particular (e.g. butter's js script)
-          data = data.replace( /\s*<script[\.\/='":_-\w\s]*data-butter-exclude[\.\/='":_-\w\s]*><\/script>/g, '' );
+          data = data.replace( /\s*<script[\.\/='":_\-\w\s]*data-butter-exclude[\.\/='":_\-\w\s]*><\/script>/g, '' );
 
-          // Adding 6 to cut out the actual head tag
+          // Adding  to cut out the actual head tag
           headStartTagIndex = data.indexOf( '<head>' ) + 6;
           headEndTagIndex = data.indexOf( '</head>' );
           bodyEndTagIndex = data.indexOf( '</body>' );
@@ -221,6 +245,9 @@ function publishRoute( req, res ){
             // Turn a single url into an array of 1 string.
             mediaUrls = typeof currentMedia.url === "string" ? [ currentMedia.url ] : currentMedia.url;
             mediaPopcornOptions = currentMedia.popcornOptions || {};
+            // Force the Popcorn instance we generate to have an ID we can query.
+            mediaPopcornOptions.id = "Butter-Generated";
+
             numSources = mediaUrls.length;
 
             for ( k = 0; k < numSources - 1; k++ ) {
@@ -240,23 +267,42 @@ function publishRoute( req, res ){
                 popcornString += ');';
               }
             }
+
             if ( currentMedia.controls ) {
               popcornString += "\npopcorn.controls( true );\n";
+            } else {
+              popcornString += "\npopcorn.controls( false );\n";
             }
             popcornString += '}());\n';
           }
           popcornString += '</script>\n';
 
           customDataString = '\n<script type="application/butter-custom-data">\n' + JSON.stringify( customData, null, 2 ) + '\n</script>\n';
-
           data = startString + baseString + templateScripts + externalAssetsString + data.substring( headEndTagIndex, bodyEndTagIndex ) + customDataString + popcornString + data.substring( bodyEndTagIndex );
 
-          fs.writeFile( projectPath, data, function(){
+          fs.writeFile( projectPath, data, function( err ){
             if( err ){
               res.json({ error: 'internal file error' }, 500);
               return;
             }
-            res.json({ error: 'okay', url: url });
+
+            // Write out embed HTML, too.
+            writeEmbed( projectEmbedPath, embedUrl, res, url, {
+              id: id,
+              author: email,
+              title: "todo",
+              baseHref: baseHref,
+              templateScripts: templateScripts,
+              externalAssets: externalAssetsString,
+              customData: customDataString,
+              // XXX: need a better way to wrap function, DOM needs to be ready
+              popcorn: popcornString.replace( /^\(function\(\)\{/m, "Popcorn( function(){" )
+                                    .replace( /\}\(\)\);$/m, "});" )
+              // XXX: need a better way to force controls off in embed.
+                                    .replace( "popcorn.controls( true );", "popcorn.controls( false );" )
+              // XXX: need a better way to force the use of the #smart div
+                                    .replace( /Popcorn.smart\("#([^"]+)"/, "Popcorn.smart(\"#embed-smart\"" )
+            });
           });
         });
       }
@@ -419,8 +465,7 @@ app.get('/api/delete/:id?', function(req, res) {
 
 
 app.post('/api/project/:id?', function( req, res ) {
-  var email = req.session.email,
-      id = req.params.id;
+  var email = req.session.email;
 
   if ( !email ) {
     res.json( { error: 'unauthorized' }, 403 );
@@ -463,7 +508,7 @@ app.post('/api/project/:id?', function( req, res ) {
         res.json( {error: 'id specified but not found. data corruption or haxxors.'}, 500 );
         return;
       }
-      var proj = new ProjectModel({
+      proj = new ProjectModel({
         name: req.body.name,
         template: req.body.template,
         data: JSON.stringify( req.body.data ),

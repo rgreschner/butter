@@ -110,30 +110,6 @@ define( [ "dialog/dialog", "util/lang", "text!layouts/header.html"],
       dialog.open();
     }
 
-    _shareButton.addEventListener( "click", function( e ){
-      function publish(){
-        butter.cornfield.publish( butter.project.id, function( e ){
-          if( e.error !== "okay" ){
-            showErrorDialog( "There was a problem saving your project. Please try again." );
-            return;
-          }
-          else{
-            var url = e.url;
-            Dialog.spawn( "share", {
-              data: url
-            }).open();
-          }
-        });
-      }
-
-      function prepare(){
-        // (Re-)Save first, and publish
-        doSave( publish );
-      }
-
-      authenticationRequired( prepare );
-    }, false );
-
     function doSave( callback ){
 
       function execute(){
@@ -202,6 +178,11 @@ define( [ "dialog/dialog", "util/lang", "text!layouts/header.html"],
         loginDisplay();
       });
     }
+
+    this.attachToDOM = function() {
+      document.body.classList.add( "butter-header-spacing" );
+      document.body.insertBefore( _rootElement, document.body.firstChild );
+    };
 
   };
 

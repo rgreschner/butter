@@ -23,6 +23,7 @@
       EventManagerWrapper( this );
 
       var _tracks = [],
+          _orderedTracks,
           _id = "Media" + __guid++,
           _logger = new Logger( _id ),
           _name = mediaOptions.name || _id,
@@ -110,11 +111,13 @@
             setup: {
               target: _target,
               url: _url
-            }
+            },
+            makeVideoURLsUnique: mediaOptions.makeVideoURLsUnique
           });
 
       this.popcornCallbacks = null;
       this.popcornScripts = null;
+      this.maxPluginZIndex = 0;
 
       this.createView = function(){
         if ( !_view ) {
@@ -141,23 +144,14 @@
         _this.dispatch( "trackeventrequested", e );
       }
 
-      function onTrackEventAdded( e ){
-        var trackEvent = e.data;
-        _popcornWrapper.updateEvent( trackEvent );
-        trackEvent._popcornWrapper = _popcornWrapper;
-      } //onTrackEventAdded
-
-      function onTrackEventRemoved( e ){
-        var trackEvent = e.data;
-        _popcornWrapper.destroyEvent( trackEvent );
-        trackEvent._popcornWrapper = null;
-      } //onTrackEventRemoved
-
-      this.addTrack = function ( track ) {
+      function ensureNewTrackIsTrack( track ) {
         if ( !( track instanceof Track ) ) {
           track = new Track( track );
-        } //if
-        track.order = _tracks.length;
+        }
+        return track;
+      }
+
+      function setupNewTrack( track ) {
         track._media = _this;
         _tracks.push( track );
         _this.chain( track, [
@@ -168,18 +162,75 @@
           "trackeventselected",
           "trackeventdeselected"
         ]);
-        track.listen( "trackeventadded", onTrackEventAdded );
-        track.listen( "trackeventremoved", onTrackEventRemoved );
-        _this.dispatch( "trackadded", track );
         track.setPopcornWrapper( _popcornWrapper );
+      }
+
+      function addNewTrackTrackEvents( track ) {
         var trackEvents = track.trackEvents;
         if ( trackEvents.length > 0 ) {
           for ( var i=0, l=trackEvents.length; i<l; ++i ) {
             track.dispatch( "trackeventadded", trackEvents[ i ] );
-          } //for
-        } //if
+          }
+        }
+      }
+
+      this.addTrack = function ( track ) {
+        track = ensureNewTrackIsTrack( track );
+
+        // Sort tracks first, so we can guarantee their ordering
+        _this.sortTracks( true );
+
+        // Give new track last order since it's newest
+        track.order = _tracks.length;
+
+        setupNewTrack( track );
+        
+        // Simply add the track onto the ordered tracks array
+        _orderedTracks.push( track );
+
+        _this.dispatch( "trackadded", track );
+        _this.dispatch( "trackorderchanged", _orderedTracks );
+
+        addNewTrackTrackEvents( track );
+
         return track;
-      }; //addTrack
+      };
+
+      this.insertTrackBefore = function( newTrack, otherTrack ) {
+        newTrack = ensureNewTrackIsTrack( newTrack );
+
+        // Sort tracks first, so we can guarantee their ordering
+        _this.sortTracks( true );
+
+        var idx = _orderedTracks.indexOf( otherTrack );
+
+        if ( idx > -1 ) {
+          // Give new track last order since it's newest
+          newTrack.order = _tracks.length;
+
+          // Insert new track
+          _orderedTracks.splice( idx, 0, newTrack );
+
+          // Fix all the order properties on subsequent tracks
+          for ( var i = idx, l = _orderedTracks.length; i < l; ++i ) {
+            _orderedTracks[ i ].order = i;
+          }
+
+          setupNewTrack( newTrack );
+          
+          console.log( newTrack.view );
+
+          _this.dispatch( "trackadded", newTrack );
+          _this.dispatch( "trackorderchanged", _orderedTracks );
+
+          addNewTrackTrackEvents( newTrack );
+
+          return newTrack;
+        }
+        else {
+          throw "inserTrackBefore must be passed a valid relative track.";
+        }
+      };
 
       this.getTrackById = function( id ){
         for( var i=0, l=_tracks.length; i<l; ++i ){
@@ -207,10 +258,9 @@
             "trackeventdeselected"
           ]);
           track.setPopcornWrapper( null );
-          track.unlisten( "trackeventadded", onTrackEventAdded );
-          track.unlisten( "trackeventremoved", onTrackEventRemoved );
-          _this.dispatch( "trackremoved", track );
+          _this.sortTracks();
           track._media = null;
+          _this.dispatch( "trackremoved", track );
           return track;
         } //if
       }; //removeTrack
@@ -284,6 +334,38 @@
         return _popcornWrapper.generatePopcornString( popcornOptions, _url, _target, null, callbacks, scripts, collectedEvents );
       };
 
+      function compareTrackOrder( a, b ) {
+        return a.order > b.order;
+      }
+
+      this.sortTracks = function( suppressEvent ) {
+        _orderedTracks = _tracks.slice();
+        _orderedTracks.sort( compareTrackOrder );
+        for ( var i = 0, l = _orderedTracks.length; i < l; ++i ) {
+          _orderedTracks.order = i;
+          _orderedTracks[ i ].updateTrackEvents();
+        }
+        if ( !suppressEvent ) {
+          _this.dispatch( "trackorderchanged", _orderedTracks );
+        }
+      };
+
+      this.getNextTrack = function( currentTrack ) {
+        var trackIndex = _orderedTracks.indexOf( currentTrack );
+        if ( trackIndex > -1 && trackIndex < _orderedTracks.length - 1 ) {
+          return _orderedTracks[ trackIndex + 1 ];
+        }
+        return null;
+      };
+
+      this.getLastTrack = function( currentTrack ) {
+        var trackIndex = _orderedTracks.indexOf( currentTrack );
+        if ( trackIndex > 0 ) {
+          return _orderedTracks[ trackIndex - 1 ];
+        }
+        return null;
+      };
+
       Object.defineProperties( this, {
         ended: {
           enumerable: true,
@@ -352,6 +434,12 @@
         tracks: {
           get: function(){
             return _tracks;
+          },
+          enumerable: true
+        },
+        orderedTracks: {
+          get: function() {
+            return _orderedTracks;
           },
           enumerable: true
         },

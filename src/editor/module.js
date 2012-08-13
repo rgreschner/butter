@@ -9,10 +9,14 @@
  */
 define( [ "core/eventmanager", "core/trackevent", "./editor",
           "ui/toggler", "util/lang", "text!layouts/editor-area.html",
-          "./default" ],
+          "./default", "core/logger", "./header",
+          "./media-editor", "./share-editor", "./settings-editor" ],
   function( EventManagerWrapper, TrackEvent, Editor,
             Toggler, LangUtils, EDITOR_AREA_LAYOUT,
-            DefaultEditor ){
+            DefaultEditor, Logger, Header,
+
+            //included here to register themselves
+            MediaEditor, ShareEditor, SettingsEditor ){
 
   /**
    * Class: EventEditor
@@ -24,14 +28,42 @@ define( [ "core/eventmanager", "core/trackevent", "./editor",
     moduleOptions = moduleOptions || {};
 
     var _currentEditor,
-        _firstUse = false,
-        _editorAreaDOMRoot = LangUtils.domFragment( EDITOR_AREA_LAYOUT ),
+        _editorAreaDOMRoot = LangUtils.domFragment( EDITOR_AREA_LAYOUT, ".butter-editor-area" ),
+        _editorContentArea = _editorAreaDOMRoot.querySelector( ".butter-editor-content" ),
+        _header,
         _toggler,
-        _this = this;
+        _this = this,
+        _logger = new Logger( butter.id );
 
     EventManagerWrapper( _this );
 
     ButterNamespace.Editor = Editor;
+
+    _header = new Header( _editorAreaDOMRoot, _this );
+
+    /**
+     * Member: openEditor
+     *
+     * Opens an editor corresponding to the given editor name if it exists
+     *
+     * @param {String} editorName: Name of editor to open
+     */
+    _this.openEditor = function( editorName, forceTrayOpen, openData ) {
+      // If the editor has never been used before, open it now
+      _editorAreaDOMRoot.classList.remove( "minimized" );
+      document.body.classList.remove( "editor-minimized" );
+      _toggler.state = false;
+
+      if( _currentEditor ) {
+        _currentEditor.close();
+      }
+      _currentEditor = Editor.create( editorName, butter );
+      _currentEditor.open( _editorContentArea, openData );
+      
+      _header.setFocus( editorName );
+
+      return _currentEditor;
+    };
 
     /**
      * Member: editTrackEvent
@@ -44,57 +76,45 @@ define( [ "core/eventmanager", "core/trackevent", "./editor",
       if ( !trackEvent || !( trackEvent instanceof TrackEvent ) ) {
         throw new Error( "trackEvent must be valid to start an editor." );
       }
-
-      // If the editor has never been used before, open it now
-      if ( !_firstUse ) {
-        _firstUse = true;
-        _editorAreaDOMRoot.classList.remove( "minimized" );
-        document.body.classList.remove( "editor-minimized" );
-        _toggler.state = false;
-      }
-
       var editorType = Editor.isRegistered( trackEvent.type ) ? trackEvent.type : "default";
-      if( _currentEditor ) {
-        _currentEditor.close();
-      }
-      _currentEditor = Editor.create( editorType, butter );
-      _currentEditor.open( _editorAreaDOMRoot, trackEvent );
-      return _currentEditor;
+      return _this.openEditor( editorType, false, trackEvent );
     };
 
     // When a TrackEvent is somewhere in butter, open its editor immediately.
-    butter.listen( "trackeventcreated", function( e ){
+    butter.listen( "trackeventcreated", function( e ) {
       if( [ "target", "media" ].indexOf( e.data.by ) > -1 && butter.ui.contentState === "timeline" ){
         _this.editTrackEvent( e.data.trackEvent );
       }
     });
 
     butter.listen( "trackeventadded", function ( e ) {
-      var trackEvent = e.data;
+      var trackEvent = e.data,
+          view = trackEvent.view,
+          element = trackEvent.view.element;
 
       // Open a new editor on a single click
       var trackEventMouseUp = function ( e ) {
-        if( butter.selectedEvents.length === 1 && !trackEvent.dragging ){
+        if( butter.selectedEvents.length === 1 && !trackEvent.dragging && !view.resizing ) {
+          trackEvent.selected = true;
           _this.editTrackEvent( trackEvent );
         }
       };
 
-      // Always open the editor on a double-click
-      var onTrackEventDoubleClicked = function ( e ) {
-        _editorAreaDOMRoot.classList.remove( "minimized" );
-        _toggler.state = false;
-      };
+      element.addEventListener( "mouseup", trackEventMouseUp, true );
 
-      trackEvent.view.element.addEventListener( "mouseup", trackEventMouseUp, true );
-      trackEvent.view.element.addEventListener( "dblclick", onTrackEventDoubleClicked, false );
+      view.listen( "trackeventdragstarted", function() {
+        element.removeEventListener( "mouseup", trackEventMouseUp, true );
+      });
+
+      view.listen( "trackeventdragstopped", function() {
+        element.addEventListener( "mouseup", trackEventMouseUp, true );
+      });
 
       butter.listen( "trackeventremoved", function ( e ) {
         if ( e.data === trackEvent ) {
-          trackEvent.view.element.removeEventListener( "mouseup", trackEventMouseUp, true );
-          trackEvent.view.element.removeEventListener( "dblclick", onTrackEventDoubleClicked, false );
+          element.removeEventListener( "mouseup", trackEventMouseUp, true );
         }
       });
-
     });
 
     /**
@@ -105,31 +125,45 @@ define( [ "core/eventmanager", "core/trackevent", "./editor",
      * @param {Function} onModuleReady: Callback to signify that module is ready
      */
     this._start = function( onModuleReady ){
-      _toggler = new Toggler( function( e ) {
-        var newState = !_editorAreaDOMRoot.classList.contains( "minimized" );
-        _toggler.state = newState;
-        if ( newState ) {
-          document.body.classList.add( "editor-minimized" );
-          _editorAreaDOMRoot.classList.add( "minimized" );
-        }
-        else {
-          document.body.classList.remove( "editor-minimized" );
-          _editorAreaDOMRoot.classList.remove( "minimized" );
-        }
-      }, "Show/Hide Editor", true );
+      _toggler = new Toggler( _editorAreaDOMRoot.querySelector( ".butter-editor-close-btn" ),
+        function( e ) {
+          var newState = !_editorAreaDOMRoot.classList.contains( "minimized" );
 
-      var editorsToLoad = [];
+          var onTransitionEnd = function(){
+            _editorAreaDOMRoot.removeEventListener( "transitionend", onTransitionEnd, false );
+            _editorAreaDOMRoot.removeEventListener( "oTransitionEnd", onTransitionEnd, false );
+            _editorAreaDOMRoot.removeEventListener( "webkitTransitionEnd", onTransitionEnd, false );
+            _this.dispatch( "editorminimized", newState );
+          };
+
+          _toggler.state = newState;
+          if ( newState ) {
+            document.body.classList.add( "editor-minimized" );
+            _editorAreaDOMRoot.classList.add( "minimized" );
+          }
+          else {
+            document.body.classList.remove( "editor-minimized" );
+            _editorAreaDOMRoot.classList.remove( "minimized" );
+          }
+
+          //Listen for the end of the "minimize" transition
+          _editorAreaDOMRoot.addEventListener( "transitionend", onTransitionEnd, false );
+          _editorAreaDOMRoot.addEventListener( "oTransitionEnd", onTransitionEnd, false );
+          _editorAreaDOMRoot.addEventListener( "webkitTransitionEnd", onTransitionEnd, false );
+          
+        }, "Show/Hide Editor", true );
+
+      var editorsToLoad = [],
+          editorsLoaded = 0;
 
       if( butter.config.value( "ui" ).enabled !== false ){
-        butter.ui.areas.editor = new butter.ui.Area( "editor-area", _editorAreaDOMRoot );
-        _editorAreaDOMRoot.appendChild( _toggler.element );
         document.body.classList.add( "butter-editor-spacing" );
 
         // Start minimized
         _editorAreaDOMRoot.classList.add( "minimized" );
         document.body.classList.add( "editor-minimized" );
 
-        document.body.appendChild( _editorAreaDOMRoot );
+        butter.ui.setEditor( _editorAreaDOMRoot );
 
         var config = butter.config.value( "editor" );
         for ( var editorName in config ) {
@@ -144,6 +178,12 @@ define( [ "core/eventmanager", "core/trackevent", "./editor",
         if ( editorsToLoad.length > 0 ){
           butter.loader.load( editorsToLoad, function() {
             Editor.loadUrlSpecifiedLayouts( onModuleReady, butter.config.value( "baseDir" ) );
+          }, function( e ) {
+            _logger.log( "Couldn't load editor " + e.srcElement.src );
+            
+            if ( ++editorsLoaded === editorsToLoad.length ) {
+              onModuleReady();
+            }
           });
         }
         else {

@@ -14,7 +14,7 @@ define( [ "text!./default.html", "editor/editor" ],
    * @param {Butter} butter: An instance of Butter
    * @param {TrackEvent} TrackEvent: The TrackEvent to edit
    */
-  Editor.register( "default", LAYOUT_SRC, function( rootElement, butter ) {
+  Editor.register( "default", LAYOUT_SRC, function( rootElement, butter, compiledLayout ) {
 
     var _this = this;
 
@@ -54,7 +54,11 @@ define( [ "text!./default.html", "editor/editor" ],
     Editor.TrackEventEditor( _this, butter, rootElement, {
       open: function ( parentElement, trackEvent ) {
         var targetList,
+            optionsContainer = _rootElement.querySelector( ".editor-options" ),
+            optionsWrapper = _rootElement.querySelector( ".editor-options-wrapper" ),
             selectElement;
+
+        _this.applyExtraHeadTags( compiledLayout );
 
         _trackEvent = trackEvent;
         _this.createPropertiesFromManifest( trackEvent,
@@ -76,20 +80,29 @@ define( [ "text!./default.html", "editor/editor" ],
                 
               }
             }
-          }, null, null, [ 'target' ] );
+          }, null, optionsContainer, null, [ "target" ] );
 
         targetList = _this.createTargetsList( _targets );
         selectElement = targetList.querySelector( "select" );
         // Attach the onchange handler to trackEvent is updated when <select> is changed
         _this.attachSelectChangeHandler( selectElement, trackEvent, "target" );
-        _rootElement.appendChild( targetList );
+        optionsContainer.appendChild( targetList );
 
         _this.updatePropertiesFromManifest( trackEvent, null, true );
+
+        _this.addVerticalScrollbar( optionsWrapper, optionsContainer, _rootElement );
+        _this.updateScrollBar();
+
+        // Catch the end of a transition for when the error message box opens/closes
+        _messageContainer.parentNode.addEventListener( "transitionend", _this.vScrollBar.update, false );
+        _messageContainer.parentNode.addEventListener( "oTransitionEnd", _this.vScrollBar.update, false );
+        _messageContainer.parentNode.addEventListener( "webkitTransitionEnd", _this.vScrollBar.update, false );
 
         // Update properties when TrackEvent is updated
         trackEvent.listen( "trackeventupdated", onTrackEventUpdated );
       },
       close: function () {
+        _this.removeExtraHeadTags();
         _trackEvent.unlisten( "trackeventupdated", onTrackEventUpdated );
       }
     });

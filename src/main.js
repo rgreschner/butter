@@ -47,7 +47,7 @@
             XHR,
             Lang,
             DefaultConfigJSON,
-            UAWarningLayout
+            UA_WARNING_LAYOUT
           ){
 
     var __guid = 0,
@@ -58,7 +58,7 @@
     }; //Butter
 
     Butter.showUAWarning = function() {
-      var uaWarningDiv = Lang.domFragment( UAWarningLayout );
+      var uaWarningDiv = Lang.domFragment( UA_WARNING_LAYOUT, ".butter-ua-warning" );
       document.body.appendChild( uaWarningDiv );
       uaWarningDiv.classList.add( "slide-out" );
       uaWarningDiv.getElementsByClassName( "close-button" )[0].onclick = function () {
@@ -225,6 +225,35 @@
         });
       }
 
+      function onTrackEventSelected( e ) {
+        _selectedEvents.push( e.target );
+      }
+
+      function onTrackEventDeSelected( e ) {
+        var trackEvent = e.target,
+            idx = _selectedEvents.indexOf( trackEvent );
+        if ( idx > -1 ) {
+          _selectedEvents.splice( idx, 1 );
+        }
+      }
+
+      function onTrackEventRemoved( e ) {
+        var trackEvent = e.data,
+            idx = _selectedEvents.indexOf( trackEvent );
+        if ( idx > -1 ) {
+          _selectedEvents.splice( idx, 1 );
+        }
+      }
+
+      this.deselectAllTrackEvents = function() {
+        // selectedEvents' length will change as each trackevent's selected property
+        // is set to false, so use a while loop here to loop through the continually
+        // shrinking selectedEvents array.
+        while ( _selectedEvents.length ) {
+          _selectedEvents[ 0 ].selected = false;
+        }
+      };
+
        /****************************************************************
        * Target methods
        ****************************************************************/
@@ -374,8 +403,12 @@
       //addMedia - add a media object
       this.addMedia = function ( media ) {
         if ( !( media instanceof Media ) ) {
+          if ( media ) {
+            media.makeVideoURLsUnique = _config.value( "makeVideoURLsUnique" );
+          }
           media = new Media( media );
         } //if
+        media.maxPluginZIndex = _config.value( "maxPluginZIndex" );
 
         media.popcornCallbacks = _defaultPopcornCallbacks;
         media.popcornScripts = _defaultPopcornScripts;
@@ -393,7 +426,8 @@
           "tracktargetchanged",
           "trackeventadded",
           "trackeventremoved",
-          "trackeventupdated"
+          "trackeventupdated",
+          "trackorderchanged"
         ]);
 
         var trackEvents;
@@ -409,6 +443,10 @@
             } //if
           } //for
         } //if
+
+        media.listen( "trackeventremoved", onTrackEventRemoved );
+        media.listen( "trackeventselected", onTrackEventSelected );
+        media.listen( "trackeventdeselected", onTrackEventDeSelected );
 
         media.listen( "trackeventrequested", mediaTrackEventRequested );
         media.listen( "mediaplayertyperequired", mediaPlayerTypeRequired );
@@ -438,7 +476,8 @@
             "tracktargetchanged",
             "trackeventadded",
             "trackeventremoved",
-            "trackeventupdated"
+            "trackeventupdated",
+            "trackorderchanged"
           ]);
           var tracks = media.tracks;
           for ( var i=0, l=tracks.length; i<l; ++i ) {
@@ -447,6 +486,10 @@
           if ( media === _currentMedia ) {
             _currentMedia = undefined;
           } //if
+
+          media.unlisten( "trackeventremoved", onTrackEventRemoved );
+          media.unlisten( "trackeventselected", onTrackEventSelected );
+          media.unlisten( "trackeventdeselected", onTrackEventDeSelected );
 
           media.unlisten( "trackeventrequested", mediaTrackEventRequested );
           media.unlisten( "mediaplayertyperequired", mediaPlayerTypeRequired );
@@ -574,9 +617,6 @@
         selectedEvents: {
           get: function() {
             return _selectedEvents;
-          },
-          set: function(selectedEvents) {
-            _selectedEvents = selectedEvents;
           },
           enumerable: true
         },
