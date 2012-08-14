@@ -7,11 +7,15 @@ define( [ "dialog/dialog", "util/lang", "text!layouts/header.html"],
 
     options = options || {};
 
-    var _rootElement = Lang.domFragment( HEADER_TEMPLATE ),
+    var _this = this,
+        _rootElement = Lang.domFragment( HEADER_TEMPLATE, ".butter-header" ),
         _saveButton = _rootElement.querySelector( ".butter-save-btn" ),
-		_sourceButton,
-        _authButton = _rootElement.querySelector( ".butter-login-btn" );
+        _buttonGroup = _rootElement.querySelector( ".butter-login-project-info"),
+        _authButton = _rootElement.querySelector( ".butter-login-btn" ),
+        _loginClass = "butter-login-true",
+        _activeClass = "btn-green";
 
+    _this.element = _rootElement;
 
    
   var LocalizationManager = butter['locales'];
@@ -24,24 +28,6 @@ define( [ "dialog/dialog", "util/lang", "text!layouts/header.html"],
       _saveButton.setAttribute("title", LocalizationManager.getLocalizedText("butter-header-save:title"));
       _saveButton.innerHTML = LocalizationManager.getLocalizedText("butter-header-save:text");
     }
-    
-    document.body.classList.add( "butter-header-spacing" );
-    if (null != _sourceButton)
-	{
-		_sourceButton.addEventListener( "click", function( e ){
-
-		  var exportPackage = {
-			html: butter.getHTML(),
-			json: butter.exportProject()
-		  };
-
-		  Dialog.spawn( "export", {
-			data: exportPackage,
-		  }).open();
-
-		}, false );
-
-	}
 	
     function authenticationRequired( successCallback, errorCallback ){
       if ( butter.cornfield.authenticated() && successCallback && typeof successCallback === "function" ) {
@@ -128,19 +114,51 @@ define( [ "dialog/dialog", "util/lang", "text!layouts/header.html"],
 		  authenticationRequired( doSave );
 		}, false );
 	}
+    function publish(){
+      butter.cornfield.publish( butter.project.id, function( e ){
+        if( e.error !== "okay" ){
+          showErrorDialog( "There was a problem saving your project. Please try again." );
+          return;
+        }
+        else{
+          var url = e.url;
+          Dialog.spawn( "share", {
+            data: url
+          }).open();
+        }
+      });
+    }
+
+    function prepare() {
+      doSave( publish );
+    }
+
+    _saveButton.addEventListener( "click", function( e ){
+      authenticationRequired( prepare );
+    }, false );
 
     function doLogout() {
       butter.cornfield.logout( logoutDisplay );
     }
 
     function loginDisplay() {
+      _buttonGroup.classList.add( "btn-group" );
+      _rootElement.classList.add( _loginClass );
+      _authButton.classList.remove( _activeClass );
       _authButton.removeEventListener( "click", authenticationRequired, false );
-      _authButton.innerHTML = "<span class='icon-user'></span> " + butter.cornfield.name();
+      _authButton.innerHTML = "<span class='icon icon-user'></span> " + butter.cornfield.name();
       _authButton.title = "This is you!";
       _authButton.addEventListener( "click", doLogout, false );
     }
 
     function logoutDisplay() {
+      _rootElement.classList.remove( _loginClass );
+      _buttonGroup.classList.remove( "btn-group" );
+      _authButton.classList.add( _activeClass );
+      _authButton.removeEventListener( "click", doLogout, false );
+      _authButton.innerHTML = DEFAULT_AUTH_BUTTON_TEXT;
+      _authButton.title = DEFAULT_AUTH_BUTTON_TITLE;
+      _authButton.addEventListener( "click", authenticationRequired, false );
 	  if (null != _authButton) {
 		  _authButton.removeEventListener( "click", doLogout, false );
 		  _authButton.innerHTML = DEFAULT_AUTH_BUTTON_TEXT;
