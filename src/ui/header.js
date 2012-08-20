@@ -4,6 +4,7 @@ define( [ "dialog/dialog", "util/lang", "text!layouts/header.html", "ui/widget/t
   var DEFAULT_AUTH_BUTTON_TEXT = "<span class='icon-user'></span> Sign In / Sign Up",
       DEFAULT_AUTH_BUTTON_TITLE = "Sign in or sign up with Persona";
 
+
   return function( butter, options ){
 
     options = options || {};
@@ -29,6 +30,18 @@ define( [ "dialog/dialog", "util/lang", "text!layouts/header.html", "ui/widget/t
     _this.element = _rootElement;
     ToolTip.apply( _projectTitle );
 
+   
+  var LocalizationManager = butter['locales'];
+  var DEFAULT_AUTH_BUTTON_TEXT = LocalizationManager.getLocalizedText("butter-header-auth:text"),
+      DEFAULT_AUTH_BUTTON_TITLE = LocalizationManager.getLocalizedText("butter-header-auth:title");
+
+    _rootElement = document.body.insertBefore( _rootElement, document.body.firstChild );
+    
+    if (null != _saveButton){
+      _saveButton.setAttribute("title", LocalizationManager.getLocalizedText("butter-header-save:title"));
+      _saveButton.innerHTML = LocalizationManager.getLocalizedText("butter-header-save:text");
+    }
+	
     function authenticationRequired( successCallback, errorCallback ){
       if ( butter.cornfield.authenticated() && successCallback && typeof successCallback === "function" ) {
         successCallback();
@@ -53,7 +66,9 @@ define( [ "dialog/dialog", "util/lang", "text!layouts/header.html", "ui/widget/t
       });
     }
 
-    _authButton.addEventListener( "click", authenticationRequired, false );
+	if (null != _authButton) {
+		_authButton.addEventListener( "click", authenticationRequired, false );
+	}
 
     function showErrorDialog( message, callback ){
       var dialog = Dialog.spawn( "error-message", {
@@ -107,6 +122,11 @@ define( [ "dialog/dialog", "util/lang", "text!layouts/header.html", "ui/widget/t
       }
     }
 
+	if (null != _saveButton){
+		_saveButton.addEventListener( "click", function( e ){
+		  authenticationRequired( doSave );
+		}, false );
+	}
     function publish(){
       butter.cornfield.publish( butter.project.id, function( e ){
         if( e.error !== "okay" ){
@@ -225,6 +245,12 @@ define( [ "dialog/dialog", "util/lang", "text!layouts/header.html", "ui/widget/t
       _authButton.innerHTML = DEFAULT_AUTH_BUTTON_TEXT;
       _authButton.title = DEFAULT_AUTH_BUTTON_TITLE;
       _authButton.addEventListener( "click", authenticationRequired, false );
+	  if (null != _authButton) {
+		  _authButton.removeEventListener( "click", doLogout, false );
+		  _authButton.innerHTML = DEFAULT_AUTH_BUTTON_TEXT;
+		  _authButton.title = DEFAULT_AUTH_BUTTON_TITLE;
+		  _authButton.addEventListener( "click", authenticationRequired, false );
+	  }
     }
 
     if ( butter.cornfield.authenticated() ) {

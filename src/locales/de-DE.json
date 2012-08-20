@@ -1,0 +1,12 @@
+{
+	"butter-header-load:text": "<span class='icon-grear-sign'></span> Projekte",
+	"butter-header-load:title": "Verwalte deine Projekte",
+	"butter-header-save:title": "Sichere dein Projekt",
+	"butter-header-save:text": "Speichern",
+	"butter-header-auth:text": "Anmelden",
+	"butter-header-auth:title": "Anmelden oder Registrieren mit Persona",
+	"butter-header-source:text": "<span class='icon-eye-open'></span> Quelltext",
+	"butter-header-source:title": "Siehe dir den Quelltext dieses Templates an",
+	"butter-header-share:text": "<span class='icon-share-alt'></span> Veröffentlichen",
+	"butter-header-share:title": "Erzeuge einen Link um dieses Projekt mit der Welt zu teilen"
+}
