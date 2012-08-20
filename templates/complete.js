@@ -1,3 +1,4 @@
+/*global Butter*/
 document.addEventListener( "DOMContentLoaded", function( e ){
 
   Butter({
@@ -6,11 +7,10 @@ document.addEventListener( "DOMContentLoaded", function( e ){
       var media = butter.currentMedia;
 
       function start(){
-        var track = media.addTrack( "Track1" );
-        media.addTrack( "Track" + Math.random() );
-        media.addTrack( "Track" + Math.random() );
+        media.addTrack();
+        media.addTrack();
 
-        var event = track.addTrackEvent({
+        butter.tracks[ 0 ].addTrackEvent({
           type: "text",
           popcornOptions: {
             start: 0,
@@ -20,17 +20,17 @@ document.addEventListener( "DOMContentLoaded", function( e ){
           }
         });
 
-        butter.tracks[ 0 ].addTrackEvent({ 
+        butter.tracks[ 0 ].addTrackEvent({
           type: "text",
           popcornOptions: {
             start: 1,
             end: 2,
-            text: "Test",   
+            text: "Test",
             target: "Area1"
           }
         });
 
-        butter.tracks[ 1 ].addTrackEvent({ 
+        butter.tracks[ 1 ].addTrackEvent({
           type: "flickr",
           popcornOptions: {
             start: 3,
@@ -41,7 +41,7 @@ document.addEventListener( "DOMContentLoaded", function( e ){
           }
         });
 
-        butter.tracks[ 1 ].addTrackEvent({ 
+        butter.tracks[ 1 ].addTrackEvent({
           type: "googlefeed",
           popcornOptions: {
             start: 4,
@@ -53,7 +53,7 @@ document.addEventListener( "DOMContentLoaded", function( e ){
           }
         });
 
-        butter.tracks[ 1 ].addTrackEvent({ 
+        butter.tracks[ 1 ].addTrackEvent({
           type: "googlemap",
           popcornOptions: {
             start: 5,
@@ -65,7 +65,7 @@ document.addEventListener( "DOMContentLoaded", function( e ){
           }
         });
 
-        butter.tracks[ 1 ].addTrackEvent({ 
+        butter.tracks[ 1 ].addTrackEvent({
           type: "image",
           popcornOptions: {
             start: 6,
@@ -75,19 +75,18 @@ document.addEventListener( "DOMContentLoaded", function( e ){
           }
         });
 
-        butter.tracks[ 1 ].addTrackEvent({ 
+        butter.tracks[ 1 ].addTrackEvent({
           type: "lastfm",
           popcornOptions: {
             start: 7,
             end: 8,
             artist: "yacht",
-            target: "lastfmdiv",
             apikey: "30ac38340e8be75f9268727cb4526b3d",
             target: "Area2"
           }
         });
 
-        butter.tracks[ 1 ].addTrackEvent({ 
+        butter.tracks[ 1 ].addTrackEvent({
           type: "linkedin",
           popcornOptions: {
             start: 1,
@@ -95,13 +94,12 @@ document.addEventListener( "DOMContentLoaded", function( e ){
             type: "share",
             counter: "right",
             url: "http://www.google.ca",
-            target: "sharediv",
             apikey: "ZOLRI2rzQS_oaXELpPF0aksxwFFEvoxAFZRLfHjaAhcGPfOX0Ds4snkJpWwKs8gk",
             target: "Area2"
           }
         });
 
-        butter.tracks[ 0 ].addTrackEvent({ 
+        butter.tracks[ 0 ].addTrackEvent({
           type: "lowerthird",
           popcornOptions: {
             start: 4,
@@ -112,7 +110,7 @@ document.addEventListener( "DOMContentLoaded", function( e ){
           }
         });
 
-        butter.tracks[ 0 ].addTrackEvent({ 
+        butter.tracks[ 0 ].addTrackEvent({
           type: "subtitle",
           popcornOptions: {
             start:2,
@@ -122,7 +120,7 @@ document.addEventListener( "DOMContentLoaded", function( e ){
           }
         });
 
-        butter.tracks[ 0 ].addTrackEvent({ 
+        butter.tracks[ 0 ].addTrackEvent({
           type: "tagthisperson",
           popcornOptions: {
             start:3,
@@ -133,7 +131,7 @@ document.addEventListener( "DOMContentLoaded", function( e ){
           }
         });
 
-        butter.tracks[ 0 ].addTrackEvent({ 
+        butter.tracks[ 0 ].addTrackEvent({
           type: "webpage",
           popcornOptions: {
             start:5,
@@ -144,7 +142,7 @@ document.addEventListener( "DOMContentLoaded", function( e ){
           }
         });
 
-        butter.tracks[ 0 ].addTrackEvent({ 
+        butter.tracks[ 0 ].addTrackEvent({
           type: "wikipedia",
           popcornOptions: {
             start:6,
@@ -155,7 +153,7 @@ document.addEventListener( "DOMContentLoaded", function( e ){
           }
         });
 
-        butter.tracks[ 0 ].addTrackEvent({ 
+        butter.tracks[ 0 ].addTrackEvent({
           type: "wordriver",
           popcornOptions: {
             start:7,
@@ -166,7 +164,7 @@ document.addEventListener( "DOMContentLoaded", function( e ){
           }
         });
   
-        butter.tracks[ 1 ].addTrackEvent({ 
+        butter.tracks[ 1 ].addTrackEvent({
           type: "gml",
           popcornOptions: {
             start:0,
@@ -180,6 +178,6 @@ document.addEventListener( "DOMContentLoaded", function( e ){
 
       media.onReady( start );
       
-    } 
+    }
   }); //Butter
 }, false );

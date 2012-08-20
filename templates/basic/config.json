@@ -7,42 +7,65 @@
     "plugins": [
       {
         "type": "titles",
-        "path": "{{baseDir}}templates/assets/plugins/titles/popcorn.titles.js"
-      },
-      {
-        "type": "photo",
-        "path": "{{baseDir}}templates/assets/plugins/photo/popcorn.photo.js"
+        "path": "{{baseDir}}templates/assets/plugins/titles/popcorn.titles.js",
+        "icon": "{{baseDir}}templates/assets/plugins/titles/titles-icon.png"
       },
       {
         "type": "popup",
-        "path": "{{baseDir}}templates/assets/plugins/popup/popcorn.popup.js"
+        "path": "{{baseDir}}templates/assets/plugins/popup/popcorn.popup.js",
+        "icon": "{{baseDir}}templates/assets/plugins/popup/popup-icon.png"
       },
       {
         "type": "googlemap",
-        "path": "{{baseDir}}external/popcorn-js/plugins/googlemap/popcorn.googlemap.js"
+        "path": "{{baseDir}}templates/assets/plugins/googlemap/popcorn.googlemap.js",
+        "icon": "{{baseDir}}resources/icons/map.png"
       },
       {
         "type": "twitter",
-        "path": "{{baseDir}}templates/assets/plugins/twitter/popcorn.twitter.js"
+        "path": "{{baseDir}}templates/assets/plugins/twitter/popcorn.twitter.js",
+        "icon": "{{baseDir}}templates/assets/plugins/twitter/twitter-icon.png"
       },
       {
         "type": "image",
-        "path": "{{baseDir}}templates/assets/plugins/image/popcorn.image.js"
+        "path": "{{baseDir}}templates/assets/plugins/image/popcorn.image.js",
+        "icon": "{{baseDir}}templates/assets/plugins/image/image-icon.png"
+      },
+      {
+        "type": "repeat",
+        "path": "{{baseDir}}templates/assets/plugins/repeat/popcorn.repeat.js",
+        "icon": "{{baseDir}}resources/icons/link.png"
+      },
+      {
+        "type": "stop",
+        "path": "{{baseDir}}templates/assets/plugins/stop/popcorn.stop.js"
+      },
+      {
+        "type": "jump",
+        "path": "{{baseDir}}templates/assets/plugins/jump/popcorn.jump.js"
+      },
+      {
+        "type": "wikipedia",
+        "path": "{{baseDir}}templates/assets/plugins/wikipedia/popcorn.wikipedia.js",
+        "icon": "{{baseDir}}templates/assets/plugins/wikipedia/wikipedia-icon.png"
       }
     ],
     "defaults": [
       "titles",
-      "photo",
       "popup",
       "googlemap",
       "twitter",
-      "image"
+      "image",
+      "repeat",
+      "stop",
+      "jump",
+      "wikipedia"
     ]
   },
   "editor": {
     "googlemap": "{{baseDir}}editors/googlemap-editor.js",
     "popup": "{{baseDir}}templates/assets/editors/popup/popup-editor.js",
-    "image": "{{baseDir}}templates/assets/editors/image/popcorn.image.editor.js"
+    "image": "{{baseDir}}templates/assets/editors/image/popcorn.image.editor.js",
+    "titles": "{{baseDir}}templates/assets/editors/titles/titles-editor.js"
   },
   "maxPluginZIndex": 1000
 }

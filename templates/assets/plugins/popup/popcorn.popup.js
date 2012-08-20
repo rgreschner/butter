@@ -183,16 +183,17 @@
         },
         transition: {
           elem: "select",
-          options: [ "None", "Pop", "Fly Up", "Fly Down", "Sparkles" ],
-          values: [ "none", "pop", "flyUp", "flyDown", "sparkles" ],
+          options: [ "None", "Pop", "Slide Up", "Slide Down", "Fade" ],
+          values: [ "none", "popcorn-pop", "popcorn-slide-up", "popcorn-slide-down", "popcorn-fade" ],
           label: "Transition",
-          "default": "pop"
+          "default": "popcorn-pop"
         },
         fontFamily: {
           elem: "select",
           label: "Font",
           styleClass: "",
           googleFonts: true,
+          "default": "Merriweather",
           group: "advanced"
         },
         fontSize: {
@@ -432,13 +433,14 @@
 
       // Add transition
       container.classList.add( options.transition );
+      container.classList.add( "off" );
       target.appendChild( container );
       options._container = container;
 
       fontSheet = document.createElement( "link" );
       fontSheet.rel = "stylesheet";
       fontSheet.type = "text/css";
-      options.fontFamily = options.fontFamily ? options.fontFamily.replace( /\s/g, "+" ) : "Tangerine";
+      options.fontFamily = options.fontFamily ? options.fontFamily : options._natives.manifest.options.fontFamily[ "default" ];
       // Store reference to generated sheet for removal later, remove any existing ones
       options._fontSheet = fontSheet;
       document.head.appendChild( fontSheet );
@@ -447,7 +449,7 @@
         // Apply all the styles
         textContainer.style.fontFamily = options.fontFamily ? originalFamily : DEFAULT_FONT;
       };
-      fontSheet.href = "http://fonts.googleapis.com/css?family=" + options.fontFamily;
+      fontSheet.href = "http://fonts.googleapis.com/css?family=" + options.fontFamily.replace( /\s/g, "+" );
 
     },
 
@@ -459,6 +461,7 @@
        * TODO:
        * Handle Fliping On/Off of transitions here properly
        */
+      options._container.classList.remove( "off" );
       options._container.classList.add( "on" );
 
       if ( audio && audio.duration && !video.paused &&
@@ -481,6 +484,7 @@
        * TODO:
        * Handle Fliping On/Off of transitions here properly
        */
+      options._container.classList.add( "off" );
       options._container.classList.remove( "on" );
     },
     

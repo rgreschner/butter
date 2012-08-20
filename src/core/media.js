@@ -7,10 +7,9 @@
             "core/logger",
             "core/eventmanager",
             "core/track",
-            "core/popcorn-wrapper",
-            "core/views/media-view"
+            "core/popcorn-wrapper"
           ],
-          function( Logger, EventManagerWrapper, Track, PopcornWrapper, MediaView ){
+          function( Logger, EventManagerWrapper, Track, PopcornWrapper ){
 
     var MEDIA_ELEMENT_SAFETY_POLL_INTERVAL = 500,
         MEDIA_ELEMENT_SAFETY_POLL_ATTEMPTS = 10;
@@ -35,7 +34,6 @@
           _duration = -1,
           _popcornOptions = mediaOptions.popcornOptions,
           _mediaUpdateInterval,
-          _view,
           _this = this,
           _popcornWrapper = new PopcornWrapper( _id, {
             popcornEvents: {
@@ -79,9 +77,6 @@
                   te[ j ].update();
                 }
               }
-              if( _view ){
-                _view.update();
-              }
 
               // If the target element has a `data-butter-media-controls` property,
               // set the `controls` attribute on the corresponding media element.
@@ -92,11 +87,6 @@
               }
 
               _this.dispatch( "mediaready" );
-            },
-            constructing: function(){
-              if( _view ){
-                _view.update();
-              }
             },
             timeout: function(){
               _this.dispatch( "mediatimeout" );
@@ -119,19 +109,8 @@
       this.popcornScripts = null;
       this.maxPluginZIndex = 0;
 
-      this.createView = function(){
-        if ( !_view ) {
-          _view = new MediaView( this, {
-            onDropped: onDroppedOnView
-          });
-        }
-      };
-
       this.destroy = function(){
         _popcornWrapper.unbind();
-        if ( _view ) {
-          _view.destroy();
-        }
       };
 
       this.clear = function(){
@@ -139,10 +118,6 @@
           _this.removeTrack( _tracks[ 0 ] );
         }
       };
-
-      function onDroppedOnView( e ){
-        _this.dispatch( "trackeventrequested", e );
-      }
 
       function ensureNewTrackIsTrack( track ) {
         if ( !( track instanceof Track ) ) {
@@ -176,7 +151,6 @@
 
       this.addTrack = function ( track ) {
         track = ensureNewTrackIsTrack( track );
-
         // Sort tracks first, so we can guarantee their ordering
         _this.sortTracks( true );
 
@@ -184,7 +158,7 @@
         track.order = _tracks.length;
 
         setupNewTrack( track );
-        
+
         // Simply add the track onto the ordered tracks array
         _orderedTracks.push( track );
 
@@ -217,8 +191,6 @@
           }
 
           setupNewTrack( newTrack );
-          
-          console.log( newTrack.view );
 
           _this.dispatch( "trackadded", newTrack );
           _this.dispatch( "trackorderchanged", _orderedTracks );
@@ -232,13 +204,13 @@
         }
       };
 
-      this.getTrackById = function( id ){
-        for( var i=0, l=_tracks.length; i<l; ++i ){
-          if( _tracks[ i ].id === id ){
+      this.getTrackById = function( id ) {
+        for ( var i = 0, l = _tracks.length; i < l; ++i ) {
+          if ( _tracks[ i ].id === id ) {
             return _tracks[ i ];
-          } //if
-        } //for
-      }; //getTrackById
+          }
+        }
+      };
 
       this.removeTrack = function ( track ) {
         var idx = _tracks.indexOf( track );
@@ -287,9 +259,6 @@
         }
         if ( _url && _target ){
           _popcornWrapper.prepare( _url, _target, _popcornOptions, _this.popcornCallbacks, _this.popcornScripts );
-        }
-        if ( _view ) {
-          _view.update();
         }
       }
 
@@ -543,12 +512,6 @@
           },
           set: function( val ){
             _popcornWrapper.volume = val;
-          }
-        },
-        view: {
-          enumerable: true,
-          get: function(){
-            return _view;
           }
         },
         popcornOptions: {

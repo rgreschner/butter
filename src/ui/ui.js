@@ -4,10 +4,10 @@
 
 define( [ "core/eventmanager", "./toggler",
           "./header", "./unload-dialog",
-          "./tray" ],
+          "./tray", "../editor/media-editor" ],
   function( EventManagerWrapper, Toggler,
             Header, UnloadDialog,
-            Tray ){
+            Tray, MediaEditor ){
 
   var TRANSITION_DURATION = 500,
       // Butter's UI is written in LESS, but deployed as CSS.
@@ -55,20 +55,22 @@ define( [ "core/eventmanager", "./toggler",
       }
       document.body.classList.add( "butter-header-spacing" );
       document.body.classList.add( "butter-tray-spacing" );
-      butter.listen( "mediaadded", function( e ){
-        e.data.createView();
-      });
     }
 
-    this.loadIcons = function( icons, resourcesDir ) {
-      var icon, img, div;
+    this.loadIcons = function( plugins, resourcesDir ) {
+      var path, img, div;
 
-      for ( icon in icons ) {
-        if ( icons.hasOwnProperty( icon ) ) {
+      plugins.forEach( function( plugin ) {
+          path = plugin.icon;
+
+          if ( !path ) {
+            return;
+          }
+          
           img = new Image();
-          img.id = icon + "-icon";
-          img.src = resourcesDir + icons[ icon ];
-
+          img.id = plugin.type + "-icon";
+          img.src = path;
+        
           // We can't use "display: none", since that makes it
           // invisible, and thus not load.  Opera also requires
           // the image be in the DOM before it will load.
@@ -78,8 +80,7 @@ define( [ "core/eventmanager", "./toggler",
 
           div.appendChild( img );
           document.body.appendChild( div );
-        }
-      }
+      });
     };
 
     this.setEditor = function( editorAreaDOMRoot ) {
@@ -104,7 +105,9 @@ define( [ "core/eventmanager", "./toggler",
 
         butter.loader.load( [ loadOptions ], function(){
           // icon preloading needs css to be loaded first
-          _this.loadIcons( _uiConfig.value( "icons" ), _uiConfig.value( "dirs" ).resources || "" );
+
+          _this.loadIcons( _uiConfig.value( "plugin" ).plugins, _uiConfig.value( "dirs" ).resources || "" );
+
           onReady();
         });
         
@@ -305,6 +308,7 @@ define( [ "core/eventmanager", "./toggler",
       _toggler.visible = true;
       if( _uiConfig.value( "ui" ).enabled !== false ){
         _this.header.attachToDOM();
+        MediaEditor( butter );
       }
     });
 
