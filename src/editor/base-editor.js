@@ -2,8 +2,8 @@
  * If a copy of the MIT license was not distributed with this file, you can
  * obtain one at http://www.mozillapopcorn.org/butter-license.txt */
 
-define( [ "core/eventmanager", "util/scrollbars" ],
-  function( EventManagerWrapper, Scrollbars ) {
+define( [ "core/eventmanager", "util/scrollbars", "ui/widget/tooltip" ],
+  function( EventManagerWrapper, Scrollbars, Tooltip ) {
 
   /**
    * Class: BaseEditor
@@ -24,9 +24,9 @@ define( [ "core/eventmanager", "util/scrollbars" ],
     extendObject.parentElement = null;
 
     // Used when applyExtraHeadTags is called -- see below
-    var _extraScriptTags = [],
-        _extraStyleTags = [];
-  
+    var _extraStyleTags = [],
+        _extraLinkTags = [];
+
     /**
      * Member: open
      *
@@ -54,6 +54,9 @@ define( [ "core/eventmanager", "util/scrollbars" ],
       if ( events.open ) {
         events.open.apply( extendObject, arguments );
       }
+
+      // Add tooltips
+      extendObject.addTooltips();
 
       extendObject.dispatch( "open" );
     };
@@ -83,13 +86,13 @@ define( [ "core/eventmanager", "util/scrollbars" ],
      * @param {DOMFragment} layout: DOMFragment containing the style tag
      */
     extendObject.applyExtraHeadTags = function( layout ) {
-      var scriptNodes = layout.querySelectorAll( "script" ),
+      var linkNodes = layout.querySelectorAll( "link" ),
           styleNodes = layout.querySelectorAll( "style" ),
           x;
 
-      for ( x = 0; x < scriptNodes.length; x++ ) {
-        _extraScriptTags[ x ] = scriptNodes[ x ];
-        document.head.appendChild( _extraScriptTags[ x ] );
+      for ( x = 0; x < linkNodes.length; x++ ) {
+        _extraLinkTags[ x ] = linkNodes[ x ];
+        document.head.appendChild( _extraLinkTags[ x ] );
       }
 
       for ( x = 0; x < styleNodes.length; x++ ) {
@@ -121,24 +124,33 @@ define( [ "core/eventmanager", "util/scrollbars" ],
 
       extendObject.scrollbar = new Scrollbars.Vertical( options.outer, options.inner );
       options.appendTo.appendChild( extendObject.scrollbar.element );
-      
+
       extendObject.scrollbar.update();
-      
+
       return extendObject.scrollBar;
     };
 
     /**
-     * Member: removeExtraTags
+    * Member: addTooltips
+    *
+    * Add tooltips to all elements marked data-tooltip
+    */
+    extendObject.addTooltips = function()  {
+      Tooltip.apply( extendObject.rootElement );
+    };
+
+    /**
+     * Member: removeExtraHeadTags
      *
-     * Remove all extra style/script tags that have been added to the document head.
+     * Remove all extra style/link tags that have been added to the document head.
      */
     extendObject.removeExtraHeadTags = function() {
       var x;
 
-      for ( x = 0; x < _extraScriptTags.length; x++ ) {
-        document.head.removeChild( _extraScriptTags[ x ] );
+      for ( x = 0; x < _extraLinkTags.length; x++ ) {
+        document.head.removeChild( _extraLinkTags[ x ] );
       }
-      _extraScriptTags = [];
+      _extraLinkTags = [];
 
       for ( x = 0; x < _extraStyleTags.length; x++ ) {
         document.head.removeChild( _extraStyleTags[ x ] );

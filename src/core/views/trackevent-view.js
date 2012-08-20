@@ -12,6 +12,7 @@ define( [ "core/logger", "core/eventmanager", "util/dragndrop",
     var _element = LangUtils.domFragment( TRACKEVENT_LAYOUT, ".butter-track-event" ),
         _zoom = 1,
         _type = type,
+        _icon = document.getElementById( _type + "-icon" ),
         _start = inputOptions.start || 0,
         _end = inputOptions.end || _start + 1,
         _parent,
@@ -24,6 +25,8 @@ define( [ "core/logger", "core/eventmanager", "util/dragndrop",
         _resizing = false,
         _padding = 0,
         _elementText,
+        _ghost,
+        _onDrag,
         _this = this;
 
     EventManagerWrapper( _this );
@@ -36,9 +39,12 @@ define( [ "core/logger", "core/eventmanager", "util/dragndrop",
     }
 
     function resetContainer(){
-      _element.style.left = _start * _zoom + "px";
-      _element.style.width = ( _end - _start ) * _zoom + "px";
-    } //resetContainer
+      if ( !_trackEvent.track || !_trackEvent.track._media ) {
+        return;
+      }
+      _element.style.left = _start  / _trackEvent.track._media.duration * 100 + "%";
+      _element.style.width = ( _end - _start ) / _trackEvent.track._media.duration * 100 + "%";
+    }
 
     this.setToolTip = function( title ){
       _element.title = title;
@@ -56,11 +62,64 @@ define( [ "core/logger", "core/eventmanager", "util/dragndrop",
       resetContainer();
     }; //update
 
+    /**
+     * Member: createGhost
+     *
+     * Creates a clone of the current trackEvent that does not have an associated Popcorn trackevent.
+     * Used to notify the user when a trackevent overlaps and where the new location will be
+     * when the trackevent is dropped
+     */
+    this.createGhost = function( track ) {
+      if ( _ghost ) {
+        return _ghost;
+      }
+
+      var clone = _element.cloneNode( false );
+      clone.style.top = "";
+      clone.style.left = "";
+      clone.classList.add( "butter-track-event-ghost" );
+
+      _ghost = {
+        element: clone
+      };
+
+      return _ghost;
+    };
+
+    /*
+     * Member: cleanupGhost
+     *
+     * Removes this trackEvent's ghost and makes sure isGhost is set to false
+     */
+    this.cleanupGhost = function() {
+      _ghost.track.view.removeTrackEventGhost( _ghost );
+      _ghost = null;
+    };
+
+    this.updateGhost = function() {
+      _ghost.element.style.left = _element.style.left;
+    };
+
+    this.setDragHandler = function( dragHandler ) {
+      _onDrag = dragHandler;
+    };
+
+    // open an editor for this trackevent
+    this.open = function() {
+      _this.dispatch( "trackeventopened", _trackEvent );
+    };
+
     Object.defineProperties( this, {
       trackEvent: {
         enumerable: true,
         get: function(){
           return _trackEvent;
+        }
+      },
+      ghost: {
+        enumerable: true,
+        get: function() {
+          return _ghost;
         }
       },
       element: {
@@ -170,6 +229,7 @@ define( [ "core/logger", "core/eventmanager", "util/dragndrop",
               _draggable = DragNDrop.draggable( _element, {
                 containment: _parent.element.parentNode,
                 scroll: _parent.element.parentNode.parentNode,
+                data: _this,
                 start: function(){
                   _dragging = true;
                   _this.dispatch( "trackeventdragstarted" );
@@ -177,7 +237,16 @@ define( [ "core/logger", "core/eventmanager", "util/dragndrop",
                 stop: function(){
                   _dragging = false;
                   _this.dispatch( "trackeventdragstopped" );
-                  movedCallback();
+
+                  // Prevent movedcallback if "trackeventdragstopped" removed this trackEvent
+                  if ( _element.parentNode ) {
+                    movedCallback();
+                  }
+                },
+                drag: function( draggable, droppable ) {
+                  if ( _onDrag ) {
+                    _onDrag( draggable, droppable );
+                  }
                 },
                 revert: true
               });
@@ -223,8 +292,8 @@ define( [ "core/logger", "core/eventmanager", "util/dragndrop",
 
     function movedCallback() {
       _element.style.top = "0px";
-      _start = _element.offsetLeft / _zoom;
-      _end = _start + ( _element.offsetWidth - _padding ) / _zoom;
+      _start = ( _element.offsetLeft / _trackEvent.track.view.element.offsetWidth ) * _trackEvent.track._media.duration;
+      _end = _start + ( _element.offsetWidth / _trackEvent.track.view.element.offsetWidth ) * _trackEvent.track._media.duration;
       _trackEvent.update({
         start: _start,
         end: _end
@@ -232,6 +301,9 @@ define( [ "core/logger", "core/eventmanager", "util/dragndrop",
     }
 
     _element.className = "butter-track-event";
+    if ( _icon ) {
+      _element.querySelector( ".butter-track-event-icon" ).style.backgroundImage = "url( "+ _icon.src + ")";
+    }
     _this.type = _type;
 
     _this.update( inputOptions );

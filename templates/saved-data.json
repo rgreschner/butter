@@ -23,7 +23,6 @@
       "duration": 64.54166412353516,
       "tracks": [
         {
-          "name": "Track0",
           "id": "Track0",
           "trackEvents": [
             {
@@ -35,18 +34,12 @@
                 "text": "test",
                 "target": "Area1"
               },
-              "track": "Track0",
+              "track": "Layer0",
               "name": "TrackEvent0"
             }
           ]
         },
         {
-          "name": "Track1",
-          "id": "Track1",
-          "trackEvents": []
-        },
-        {
-          "name": "Track2",
           "id": "Track2",
           "trackEvents": [
             {
@@ -58,7 +51,6 @@
                 "target": "Area2",
                 "text": "tset"
               },
-              "track": "Track2",
               "name": "TrackEvent1"
             }
           ]
