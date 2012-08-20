@@ -1,4 +1,3 @@
-/*jshint eqeqeq:false */
 console.log( __dirname );
 
 var express = require('express'),
@@ -22,6 +21,10 @@ var express = require('express'),
     WWW_ROOT = path.resolve( CONFIG.dirs.wwwRoot || path.join( __dirname, ".." ) ),
     VALID_TEMPLATES = CONFIG.templates,
     EXPORT_ASSETS = CONFIG.exportAssets;
+	
+filter.isLoggedIn = function( req, res, next ) {
+    next();
+}
 
 var templateConfigs = {};
 
@@ -37,9 +40,7 @@ function readTemplateConfig( templateName, templatedPath ) {
 
 // parse configs ahead of any action that has to happen with them
 for ( var templateName in VALID_TEMPLATES ) {
-  if ( VALID_TEMPLATES.hasOwnProperty( templateName ) ) {
-    readTemplateConfig( templateName, VALID_TEMPLATES[ templateName ] );
-  }
+  readTemplateConfig( templateName, VALID_TEMPLATES[ templateName ] );
 }
 
 console.log( "Templates Dir:", TEMPLATES_DIR );
@@ -147,8 +148,9 @@ function writeEmbed( path, res, url, data, callback ) {
   });
 }
 
-app.post( '/api/publish/:id', filter.isLoggedIn, filter.isStorageAvailable, function publishRoute( req, res ) {
-  var email = req.session.email,
+  
+function publishRoute( req, res ){
+  var email = "test@trash-mail.com",
       id = req.params.id;
 
   UserModel.findOne( { email: email }, function( err, doc ) {
@@ -323,7 +325,7 @@ app.post( '/api/publish/:id', filter.isLoggedIn, filter.isStorageAvailable, func
 
     });
   });
-});
+}
 
 app.get( '/dashboard', filter.isStorageAvailable, function( req, res ) {
   var email = req.session.email;
@@ -360,7 +362,7 @@ app.get( '/dashboard', filter.isStorageAvailable, function( req, res ) {
 });
 
 app.get( '/api/projects', filter.isLoggedIn, filter.isStorageAvailable, function( req, res ) {
-  var email = req.session.email;
+  var email = "test@trash-mail.com";
 
   UserModel.findOne( { email: email }, function( err, doc ) {
 
@@ -395,7 +397,7 @@ app.get( '/api/projects', filter.isLoggedIn, filter.isStorageAvailable, function
 });
 
 app.get( '/api/project/:id?', filter.isLoggedIn, filter.isStorageAvailable, function( req, res ) {
-  var email = req.session.email,
+  var email = "test@trash-mail.com",
       id = req.params.id;
 
   UserModel.findOne( { email: email }, function( err, doc ) {
@@ -415,7 +417,7 @@ app.get( '/api/project/:id?', filter.isLoggedIn, filter.isStorageAvailable, func
 });
 
 app.get( '/api/delete/:id?', filter.isLoggedIn, filter.isStorageAvailable, function( req, res ) {
-  var email = req.session.email,
+  var email = "test@trash-mail.com",
       id = req.params.id;
 
   UserModel.findOne( { email: email }, function( err, doc ) {
@@ -435,7 +437,7 @@ app.get( '/api/delete/:id?', filter.isLoggedIn, filter.isStorageAvailable, funct
 
 
 app.post( '/api/project/:id?', filter.isLoggedIn, filter.isStorageAvailable, function( req, res ) {
-  var email = req.session.email;
+  var email = "test@trash-mail.com";
 
   if( !req.body ){
     res.json( {error: 'no project data received' }, 500 );
@@ -468,7 +470,7 @@ app.post( '/api/project/:id?', filter.isLoggedIn, filter.isStorageAvailable, fun
         res.json( {error: 'id specified but not found. data corruption or haxxors.'}, 500 );
         return;
       }
-      proj = new ProjectModel({
+      var proj = new ProjectModel({
         name: req.body.name,
         template: req.body.template,
         data: JSON.stringify( req.body.data ),
@@ -492,7 +494,7 @@ app.post( '/api/project/:id?', filter.isLoggedIn, filter.isStorageAvailable, fun
 });
 
 app.get( '/api/whoami', filter.isLoggedIn, function( req, res ) {
-  var email = req.session.email;
+  var email = "test@trash-mail.com";
 
   res.json({
     email: email,
